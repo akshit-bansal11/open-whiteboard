@@ -6,10 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "ws": "tsx src/server/ws-server.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome lint src",
+    "format": "biome format --write src",
+    "check": "tsc --noEmit && biome lint src && vitest run",
     "test": "vitest run",
-    "lint": "biome lint .",
-    "format": "biome format --write . && biome check --write .",
-    "typecheck": "npx tsc --noEmit"
+    "test:watch": "vitest"
   },
   "dependencies": {
     "framer-motion": "^12.42.0",
@@ -21,6 +24,7 @@
     "react-dom": "19.2.4",
     "socket.io": "^4.8.3",
     "socket.io-client": "^4.8.3",
+    "ws": "^8.21.0",
     "y-protocols": "^1.0.7",
     "y-websocket": "^3.0.0",
     "yjs": "^13.6.31",
@@ -34,12 +38,15 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/ws": "^8.18.1",
     "@vitejs/plugin-react": "^6.0.3",
     "babel-plugin-react-compiler": "1.0.0",
+    "happy-dom": "^20.10.6",
     "jsdom": "^29.1.1",
     "tailwindcss": "^4",
     "tsx": "^4.22.4",
     "typescript": "^5",
-    "vitest": "^4.1.9"
+    "vitest": "^4.1.9",
+    "worker-loader": "^3.0.8"
   }
 }

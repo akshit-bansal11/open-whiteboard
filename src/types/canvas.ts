@@ -91,6 +91,28 @@ export function isPenShape(s: Shape): s is PenShape {
 }
 
 export type SelectionState = {
-  selectedIds: Set<ShapeId>;
-  selectionBox: BoundingBox | null;
-};
+  selectedIds: Set<ShapeId>
+  selectionBox: BoundingBox | null
+}
+
+// Interaction state machine — drives the canvas engine in use-canvas-engine
+export type InteractionState =
+  | { mode: "idle" }
+  | { mode: "panning"; startCamera: Camera; startPointer: Point }
+  | { mode: "drawing"; tool: DrawTool; shape: Shape; startWorld: Point }
+  | {
+      mode: "moving"
+      shapeIds: ShapeId[]
+      startPositions: Map<ShapeId, Point>
+      startPointer: Point
+    }
+  | {
+      mode: "resizing"
+      shapeId: ShapeId
+      handle: ResizeHandle
+      startShape: Shape
+      startPointer: Point
+    }
+  | { mode: "selecting"; startWorld: Point; currentWorld: Point }
+  | { mode: "editing-text"; shapeId: ShapeId }
+
