@@ -18,9 +18,8 @@
     "enabled": true,
     "rules": {
       "recommended": true,
-      "suspicious": {
-        "noUnknownAtRules": "off"
-      }
+      "suspicious": { "noExplicitAny": "error" },
+      "style": { "noNonNullAssertion": "warn" }
     },
     "domains": {
       "next": "recommended",
@@ -32,6 +31,13 @@
       "source": {
         "organizeImports": "on"
       }
+    }
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "double",
+      "semicolons": "asNeeded",
+      "trailingCommas": "es5"
     }
   }
 }
