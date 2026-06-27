@@ -1,5 +1,4 @@
-import type { AwarenessState } from "@/types/user"
-import type { UserColor } from "@/types/user"
+import type { AwarenessState, UserColor } from "@/types/user"
 
 const COLORS: UserColor[] = [
   "#ef4444",
