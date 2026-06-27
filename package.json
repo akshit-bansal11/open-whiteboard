@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "test": "vitest run",
     "lint": "npx @biomejs/biome lint .",
     "format": "npx @biomejs/biome format --write . && npx @biomejs/biome check --write .",
     "typecheck": "npx tsc --noEmit"
