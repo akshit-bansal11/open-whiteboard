@@ -7,12 +7,12 @@
     "build": "next build",
     "start": "next start",
     "ws": "tsx src/server/ws-server.ts",
-    "typecheck": "tsc --noEmit",
-    "lint": "biome lint src",
-    "format": "biome format --write src",
-    "check": "tsc --noEmit && biome lint src && vitest run",
+    "tsc": "tsc --noEmit",
+    "lint": "biome lint --write src",
+    "format": "biome format --write . && biome check --write .",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "quality-gate": "npm run format && npm run lint && npm run tsc"
   },
   "dependencies": {
     "framer-motion": "^12.42.0",
