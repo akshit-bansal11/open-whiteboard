@@ -9,6 +9,24 @@
     "ignoreUnknown": true,
     "includes": ["**", "!node_modules", "!.next", "!dist", "!build"]
   },
+  "css": {
+    "linter": {
+      "enabled": true
+    },
+    "parser": {
+      "cssModules": false
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["src/app/globals.css"],
+      "css": {
+        "linter": {
+          "enabled": false
+        }
+      }
+    }
+  ],
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
