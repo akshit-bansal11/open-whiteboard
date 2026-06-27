@@ -24,4 +24,3 @@ export const PEN_MIN_DISTANCE = 4 as const
 
 // V2 agent context cap — max shapes sent to the AI in one context window
 export const MAX_SHAPES_IN_CONTEXT = 100 as const
-

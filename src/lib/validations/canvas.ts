@@ -1,4 +1,4 @@
-import { z } from "zod";
+import { z } from "zod"
 
 // ---------------------------------------------------------------------------
 // Primitive helpers
@@ -8,12 +8,12 @@ import { z } from "zod";
  * A non-empty string validated to be a ShapeId (branded at the type level).
  * At runtime we can't enforce the brand — we just ensure it's a non-empty string.
  */
-const ShapeIdSchema = z.string().min(1);
+const ShapeIdSchema = z.string().min(1)
 
 const PointSchema = z.object({
   x: z.number().finite(),
   y: z.number().finite(),
-});
+})
 
 // ---------------------------------------------------------------------------
 // Base shape — fields shared by every shape variant
@@ -33,7 +33,7 @@ const BaseShapeSchema = z.object({
   locked: z.boolean(),
   createdBy: z.string().min(1),
   updatedAt: z.number().int().nonnegative(),
-});
+})
 
 // ---------------------------------------------------------------------------
 // Shape variants
@@ -41,11 +41,11 @@ const BaseShapeSchema = z.object({
 
 export const RectShapeSchema = BaseShapeSchema.extend({
   type: z.literal("rect"),
-});
+})
 
 export const EllipseShapeSchema = BaseShapeSchema.extend({
   type: z.literal("ellipse"),
-});
+})
 
 export const TextShapeSchema = BaseShapeSchema.extend({
   type: z.literal("text"),
@@ -53,13 +53,13 @@ export const TextShapeSchema = BaseShapeSchema.extend({
   fontSize: z.number().positive().finite(),
   fontFamily: z.string().min(1),
   textAlign: z.enum(["left", "center", "right"]),
-});
+})
 
 export const PenShapeSchema = BaseShapeSchema.extend({
   type: z.literal("pen"),
   /** At least two points are needed to form a visible stroke. */
   points: z.array(PointSchema).min(2),
-});
+})
 
 // ---------------------------------------------------------------------------
 // Discriminated union — the primary public schema
@@ -70,20 +70,20 @@ export const ShapeSchema = z.discriminatedUnion("type", [
   EllipseShapeSchema,
   TextShapeSchema,
   PenShapeSchema,
-]);
+])
 
 // ---------------------------------------------------------------------------
 // Inferred types
 // These replace hand-written types and are always in sync with the schemas.
 // ---------------------------------------------------------------------------
 
-export type RectShapeValidated = z.infer<typeof RectShapeSchema>;
-export type EllipseShapeValidated = z.infer<typeof EllipseShapeSchema>;
-export type TextShapeValidated = z.infer<typeof TextShapeSchema>;
-export type PenShapeValidated = z.infer<typeof PenShapeSchema>;
+export type RectShapeValidated = z.infer<typeof RectShapeSchema>
+export type EllipseShapeValidated = z.infer<typeof EllipseShapeSchema>
+export type TextShapeValidated = z.infer<typeof TextShapeSchema>
+export type PenShapeValidated = z.infer<typeof PenShapeSchema>
 
 /** Union of all validated shape types — runtime-safe counterpart to `Shape`. */
-export type ShapeValidated = z.infer<typeof ShapeSchema>;
+export type ShapeValidated = z.infer<typeof ShapeSchema>
 
 // ---------------------------------------------------------------------------
 // Partial update schema — used at API boundaries for PATCH-style ops
@@ -99,4 +99,4 @@ export const ShapeUpdateSchema = z.union([
   EllipseShapeSchema.partial().required({ id: true }),
   TextShapeSchema.partial().required({ id: true }),
   PenShapeSchema.partial().required({ id: true }),
-]);
+])

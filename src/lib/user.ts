@@ -26,12 +26,19 @@ export function getOrCreateLocalUser(): Pick<
   "userId" | "name" | "color"
 > {
   if (typeof window === "undefined") {
-    return { userId: "ssr" as AwarenessState["userId"], name: "Anonymous", color: COLORS[0] }
+    return {
+      userId: "ssr" as AwarenessState["userId"],
+      name: "Anonymous",
+      color: COLORS[0],
+    }
   }
   const stored = localStorage.getItem("coform-user")
   if (stored) {
     try {
-      return JSON.parse(stored) as Pick<AwarenessState, "userId" | "name" | "color">
+      return JSON.parse(stored) as Pick<
+        AwarenessState,
+        "userId" | "name" | "color"
+      >
     } catch {
       // ignore corrupt storage — fall through to create a new user
     }

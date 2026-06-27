@@ -1,11 +1,11 @@
-import { HANDLE_SIZE, MIN_SHAPE_SIZE } from "@/constants/canvas";
+import { HANDLE_SIZE, MIN_SHAPE_SIZE } from "@/constants/canvas"
 import type {
   BoundingBox,
   Camera,
   Point,
   ResizeHandle,
   Shape,
-} from "@/types/canvas";
+} from "@/types/canvas"
 
 // ---------------------------------------------------------------------------
 // Coordinate conversion
@@ -26,7 +26,7 @@ export function screenToWorld(point: Point, camera: Camera): Point {
   return {
     x: (point.x - camera.x) / camera.zoom,
     y: (point.y - camera.y) / camera.zoom,
-  };
+  }
 }
 
 /**
@@ -44,7 +44,7 @@ export function worldToScreen(point: Point, camera: Camera): Point {
   return {
     x: point.x * camera.zoom + camera.x,
     y: point.y * camera.zoom + camera.y,
-  };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -63,7 +63,7 @@ export function worldToScreen(point: Point, camera: Camera): Point {
  * snapToGrid(31, 20) // → 40
  */
 export function snapToGrid(value: number, gridSize: number): number {
-  return Math.round(value / gridSize) * gridSize;
+  return Math.round(value / gridSize) * gridSize
 }
 
 // ---------------------------------------------------------------------------
@@ -82,25 +82,25 @@ export function snapToGrid(value: number, gridSize: number): number {
 export function getShapeBoundingBox(shape: Shape): BoundingBox {
   if (shape.type === "pen") {
     if (shape.points.length === 0) {
-      return { x: shape.x, y: shape.y, width: 0, height: 0 };
+      return { x: shape.x, y: shape.y, width: 0, height: 0 }
     }
 
-    let minX = shape.points[0]?.x ?? 0;
-    let minY = shape.points[0]?.y ?? 0;
-    let maxX = minX;
-    let maxY = minY;
+    let minX = shape.points[0]?.x ?? 0
+    let minY = shape.points[0]?.y ?? 0
+    let maxX = minX
+    let maxY = minY
 
     for (const p of shape.points) {
-      if (p.x < minX) minX = p.x;
-      if (p.y < minY) minY = p.y;
-      if (p.x > maxX) maxX = p.x;
-      if (p.y > maxY) maxY = p.y;
+      if (p.x < minX) minX = p.x
+      if (p.y < minY) minY = p.y
+      if (p.x > maxX) maxX = p.x
+      if (p.y > maxY) maxY = p.y
     }
 
-    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
   }
 
-  return { x: shape.x, y: shape.y, width: shape.width, height: shape.height };
+  return { x: shape.x, y: shape.y, width: shape.width, height: shape.height }
 }
 
 /**
@@ -110,23 +110,23 @@ export function getShapeBoundingBox(shape: Shape): BoundingBox {
  * @returns The smallest bounding box containing all shapes, or `null`.
  */
 export function getSelectionBoundingBox(shapes: Shape[]): BoundingBox | null {
-  if (shapes.length === 0) return null;
+  if (shapes.length === 0) return null
 
-  const first = getShapeBoundingBox(shapes[0] as Shape);
-  let minX = first.x;
-  let minY = first.y;
-  let maxX = first.x + first.width;
-  let maxY = first.y + first.height;
+  const first = getShapeBoundingBox(shapes[0] as Shape)
+  let minX = first.x
+  let minY = first.y
+  let maxX = first.x + first.width
+  let maxY = first.y + first.height
 
   for (let i = 1; i < shapes.length; i++) {
-    const bb = getShapeBoundingBox(shapes[i] as Shape);
-    if (bb.x < minX) minX = bb.x;
-    if (bb.y < minY) minY = bb.y;
-    if (bb.x + bb.width > maxX) maxX = bb.x + bb.width;
-    if (bb.y + bb.height > maxY) maxY = bb.y + bb.height;
+    const bb = getShapeBoundingBox(shapes[i] as Shape)
+    if (bb.x < minX) minX = bb.x
+    if (bb.y < minY) minY = bb.y
+    if (bb.x + bb.width > maxX) maxX = bb.x + bb.width
+    if (bb.y + bb.height > maxY) maxY = bb.y + bb.height
   }
 
-  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+  return { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
 }
 
 // ---------------------------------------------------------------------------
@@ -142,14 +142,14 @@ export function getSelectionBoundingBox(shapes: Shape[]): BoundingBox | null {
  * @returns The rotated point.
  */
 function rotatePoint(point: Point, pivot: Point, angle: number): Point {
-  const cos = Math.cos(angle);
-  const sin = Math.sin(angle);
-  const dx = point.x - pivot.x;
-  const dy = point.y - pivot.y;
+  const cos = Math.cos(angle)
+  const sin = Math.sin(angle)
+  const dx = point.x - pivot.x
+  const dy = point.y - pivot.y
   return {
     x: pivot.x + dx * cos - dy * sin,
     y: pivot.y + dx * sin + dy * cos,
-  };
+  }
 }
 
 /**
@@ -164,20 +164,20 @@ function rotatePoint(point: Point, pivot: Point, angle: number): Point {
  * @returns `true` if the point is inside the shape's footprint.
  */
 export function hitTestShape(point: Point, shape: Shape): boolean {
-  const bbox = getShapeBoundingBox(shape);
-  const cx = bbox.x + bbox.width / 2;
-  const cy = bbox.y + bbox.height / 2;
-  const center: Point = { x: cx, y: cy };
+  const bbox = getShapeBoundingBox(shape)
+  const cx = bbox.x + bbox.width / 2
+  const cy = bbox.y + bbox.height / 2
+  const center: Point = { x: cx, y: cy }
 
   // Inverse-rotate the point by -rotation so we can use a simple AABB check
-  const local = rotatePoint(point, center, -shape.rotation);
+  const local = rotatePoint(point, center, -shape.rotation)
 
   return (
     local.x >= bbox.x &&
     local.x <= bbox.x + bbox.width &&
     local.y >= bbox.y &&
     local.y <= bbox.y + bbox.height
-  );
+  )
 }
 
 // ---------------------------------------------------------------------------
@@ -194,7 +194,7 @@ const HANDLE_POSITIONS: Record<ResizeHandle, { rx: number; ry: number }> = {
   s: { rx: 0.5, ry: 1 },
   sw: { rx: 0, ry: 1 },
   w: { rx: 0, ry: 0.5 },
-} as const;
+} as const
 
 /**
  * Returns the screen-space position of a specific handle on a bounding box.
@@ -207,14 +207,14 @@ const HANDLE_POSITIONS: Record<ResizeHandle, { rx: number; ry: number }> = {
 function getHandleScreenPos(
   handle: ResizeHandle,
   bbox: BoundingBox,
-  camera: Camera,
+  camera: Camera
 ): Point {
-  const { rx, ry } = HANDLE_POSITIONS[handle];
+  const { rx, ry } = HANDLE_POSITIONS[handle]
   const worldPos: Point = {
     x: bbox.x + bbox.width * rx,
     y: bbox.y + bbox.height * ry,
-  };
-  return worldToScreen(worldPos, camera);
+  }
+  return worldToScreen(worldPos, camera)
 }
 
 /**
@@ -232,19 +232,19 @@ function getHandleScreenPos(
 export function getResizeHandle(
   point: Point,
   bbox: BoundingBox,
-  camera: Camera,
+  camera: Camera
 ): ResizeHandle | null {
-  const hitRadius = HANDLE_SIZE / 2;
+  const hitRadius = HANDLE_SIZE / 2
 
   for (const handle of Object.keys(HANDLE_POSITIONS) as ResizeHandle[]) {
-    const screenPos = getHandleScreenPos(handle, bbox, camera);
-    const dx = point.x - screenPos.x;
-    const dy = point.y - screenPos.y;
+    const screenPos = getHandleScreenPos(handle, bbox, camera)
+    const dx = point.x - screenPos.x
+    const dy = point.y - screenPos.y
     if (Math.abs(dx) <= hitRadius && Math.abs(dy) <= hitRadius) {
-      return handle;
+      return handle
     }
   }
-  return null;
+  return null
 }
 
 // ---------------------------------------------------------------------------
@@ -268,63 +268,63 @@ export function applyResize(
   shape: Shape,
   handle: ResizeHandle,
   delta: Point,
-  aspectLock: boolean,
+  aspectLock: boolean
 ): Pick<Shape, "x" | "y" | "width" | "height"> {
-  let { x, y, width, height } = shape;
-  const aspect = width !== 0 ? width / height : 1;
+  let { x, y, width, height } = shape
+  const aspect = width !== 0 ? width / height : 1
 
   // Apply the delta to the relevant edges based on which handle is active
   if (handle === "nw" || handle === "n" || handle === "ne") {
-    y += delta.y;
-    height -= delta.y;
+    y += delta.y
+    height -= delta.y
   }
   if (handle === "se" || handle === "s" || handle === "sw") {
-    height += delta.y;
+    height += delta.y
   }
   if (handle === "nw" || handle === "w" || handle === "sw") {
-    x += delta.x;
-    width -= delta.x;
+    x += delta.x
+    width -= delta.x
   }
   if (handle === "ne" || handle === "e" || handle === "se") {
-    width += delta.x;
+    width += delta.x
   }
 
   // Aspect lock — adjust the secondary axis to maintain the original ratio
   if (aspectLock && aspect !== 0) {
     const isCorner =
-      handle === "nw" || handle === "ne" || handle === "se" || handle === "sw";
+      handle === "nw" || handle === "ne" || handle === "se" || handle === "sw"
     if (isCorner) {
       // Drive height from width
-      const newHeight = width / aspect;
+      const newHeight = width / aspect
       if (handle === "nw" || handle === "ne") {
-        y += height - newHeight; // keep bottom edge fixed
+        y += height - newHeight // keep bottom edge fixed
       }
-      height = newHeight;
+      height = newHeight
     }
   }
 
   // Clamp to minimum size, flipping anchor when dimension goes negative
   if (width < MIN_SHAPE_SIZE) {
     if (handle === "nw" || handle === "w" || handle === "sw") {
-      x = x + width - MIN_SHAPE_SIZE;
+      x = x + width - MIN_SHAPE_SIZE
     }
-    width = MIN_SHAPE_SIZE;
+    width = MIN_SHAPE_SIZE
   }
   if (height < MIN_SHAPE_SIZE) {
     if (handle === "nw" || handle === "n" || handle === "ne") {
-      y = y + height - MIN_SHAPE_SIZE;
+      y = y + height - MIN_SHAPE_SIZE
     }
-    height = MIN_SHAPE_SIZE;
+    height = MIN_SHAPE_SIZE
   }
 
-  return { x, y, width, height };
+  return { x, y, width, height }
 }
 
 // ---------------------------------------------------------------------------
 // Rotation
 // ---------------------------------------------------------------------------
 
-const TWO_PI = Math.PI * 2;
+const TWO_PI = Math.PI * 2
 
 /**
  * Returns an updated shape with its rotation incremented by `angleDelta`.
@@ -340,10 +340,10 @@ const TWO_PI = Math.PI * 2;
 export function applyRotation(
   shape: Shape,
   _center: Point,
-  angleDelta: number,
+  angleDelta: number
 ): Pick<Shape, "rotation"> {
-  const raw = shape.rotation + angleDelta;
+  const raw = shape.rotation + angleDelta
   // Normalise to [0, 2π)
-  const rotation = ((raw % TWO_PI) + TWO_PI) % TWO_PI;
-  return { rotation };
+  const rotation = ((raw % TWO_PI) + TWO_PI) % TWO_PI
+  return { rotation }
 }

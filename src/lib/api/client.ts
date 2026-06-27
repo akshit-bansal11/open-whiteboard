@@ -2,7 +2,7 @@ export class ApiError extends Error {
   constructor(
     public readonly status: number,
     public readonly detail: string,
-    message: string,
+    message: string
   ) {
     super(message)
     this.name = "ApiError"
@@ -11,11 +11,11 @@ export class ApiError extends Error {
 
 async function handleResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
-    const body = await res.json().catch(() => ({})) as Record<string, unknown>
+    const body = (await res.json().catch(() => ({}))) as Record<string, unknown>
     throw new ApiError(
       res.status,
       typeof body.detail === "string" ? body.detail : "Unknown error",
-      typeof body.title === "string" ? body.title : res.statusText,
+      typeof body.title === "string" ? body.title : res.statusText
     )
   }
   return res.json() as Promise<T>
@@ -23,7 +23,7 @@ async function handleResponse<T>(res: Response): Promise<T> {
 
 export async function apiPost<TBody, TResponse>(
   url: string,
-  body: TBody,
+  body: TBody
 ): Promise<TResponse> {
   const res = await fetch(url, {
     method: "POST",

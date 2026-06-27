@@ -14,7 +14,11 @@ export const GetRoomResponseSchema = z.object({
   }),
 })
 
-export const RoomIdParamSchema = z.string().min(1).max(64).regex(/^[a-zA-Z0-9_-]+$/)
+export const RoomIdParamSchema = z
+  .string()
+  .min(1)
+  .max(64)
+  .regex(/^[a-zA-Z0-9_-]+$/)
 
 // ---------------------------------------------------------------------------
 // Inferred types
