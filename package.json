@@ -7,8 +7,8 @@
     "build": "next build",
     "start": "next start",
     "test": "vitest run",
-    "lint": "npx @biomejs/biome lint .",
-    "format": "npx @biomejs/biome format --write . && npx @biomejs/biome check --write .",
+    "lint": "biome lint .",
+    "format": "biome format --write . && biome check --write .",
     "typecheck": "npx tsc --noEmit"
   },
   "dependencies": {
