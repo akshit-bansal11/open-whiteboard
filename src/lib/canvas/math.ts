@@ -13,6 +13,30 @@ import type {
 } from "@/types/canvas"
 
 // ---------------------------------------------------------------------------
+// Line-segment distance — used for arrow/line hit testing
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns the shortest distance from point `p` to the line segment [a, b].
+ *
+ * @param p - The test point.
+ * @param a - Segment start.
+ * @param b - Segment end.
+ * @returns Distance in world units.
+ */
+export function distanceToSegment(p: Point, a: Point, b: Point): number {
+  const abx = b.x - a.x
+  const aby = b.y - a.y
+  const lenSq = abx ** 2 + aby ** 2
+  if (lenSq === 0) return getDistanceBetweenPoints(p, a)
+  const t = Math.max(
+    0,
+    Math.min(1, ((p.x - a.x) * abx + (p.y - a.y) * aby) / lenSq)
+  )
+  return getDistanceBetweenPoints(p, { x: a.x + t * abx, y: a.y + t * aby })
+}
+
+// ---------------------------------------------------------------------------
 // Math primitives
 // ---------------------------------------------------------------------------
 
@@ -46,6 +70,26 @@ export function zoomToward(
     zoom: clampedZoom,
     x: screenPoint.x - worldX * clampedZoom,
     y: screenPoint.y - worldY * clampedZoom,
+  }
+}
+
+/**
+ * Calculates a camera state that fits a given bounding box into the viewport with padding.
+ */
+export function calculateFitAllCamera(
+  bbox: BoundingBox,
+  viewportWidth: number,
+  viewportHeight: number,
+  padding = 64
+): Camera {
+  const scaleX = (viewportWidth - padding * 2) / bbox.width
+  const scaleY = (viewportHeight - padding * 2) / bbox.height
+  const zoom = clamp(Math.min(scaleX, scaleY), ZOOM_MIN, ZOOM_MAX)
+
+  return {
+    zoom,
+    x: -bbox.x * zoom + (viewportWidth - bbox.width * zoom) / 2,
+    y: -bbox.y * zoom + (viewportHeight - bbox.height * zoom) / 2,
   }
 }
 
@@ -142,6 +186,15 @@ export function getShapeBoundingBox(shape: Shape): BoundingBox {
     return { x: minX, y: minY, width: maxX - minX, height: maxY - minY }
   }
 
+  if (shape.type === "arrow" || shape.type === "line") {
+    return {
+      x: Math.min(shape.startX, shape.endX),
+      y: Math.min(shape.startY, shape.endY),
+      width: Math.abs(shape.endX - shape.startX),
+      height: Math.abs(shape.endY - shape.startY),
+    }
+  }
+
   return { x: shape.x, y: shape.y, width: shape.width, height: shape.height }
 }
 
@@ -205,7 +258,17 @@ function rotatePoint(point: Point, pivot: Point, angle: number): Point {
  * @param shape - The shape to test against.
  * @returns `true` if the point is inside the shape's footprint.
  */
+/** Hit threshold for arrow/line shapes, in world units. */
+const LINE_HIT_THRESHOLD = 8
+
 export function hitTestShape(point: Point, shape: Shape): boolean {
+  // Arrow and line: distance-to-segment test with 8px threshold
+  if (shape.type === "arrow" || shape.type === "line") {
+    const a: Point = { x: shape.startX, y: shape.startY }
+    const b: Point = { x: shape.endX, y: shape.endY }
+    return distanceToSegment(point, a, b) <= LINE_HIT_THRESHOLD
+  }
+
   const bbox = getShapeBoundingBox(shape)
   const cx = bbox.x + bbox.width / 2
   const cy = bbox.y + bbox.height / 2

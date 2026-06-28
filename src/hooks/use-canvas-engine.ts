@@ -18,7 +18,14 @@ import {
   zoomToward,
 } from "@/lib/canvas/math"
 import { useUIStore } from "@/stores/ui-store"
-import type { InteractionState, Point, Shape, ShapeId } from "@/types/canvas"
+import type {
+  ArrowShape,
+  InteractionState,
+  LineShape,
+  Point,
+  Shape,
+  ShapeId,
+} from "@/types/canvas"
 
 type EngineProps = {
   shapes: Shape[]
@@ -28,6 +35,13 @@ type EngineProps = {
   setLocalCursor: (pos: { x: number; y: number }) => void
   setLocalSelection: (ids: string[]) => void
   currentUserId: string
+}
+
+/** Shared default values for new BaseShape fields introduced in V1.2. */
+const BASE_V12 = {
+  cornerRadius: 0,
+  dashArray: [] as number[],
+  fillStyle: "solid" as const,
 }
 
 export function useCanvasEngine({
@@ -101,6 +115,20 @@ export function useCanvasEngine({
         return
       }
 
+      // Eraser tool — start erasing
+      if (activeTool === "eraser") {
+        setInteractionState({ mode: "erasing" })
+        // Hit test immediately on pointer down
+        const hit = [...shapes]
+          .reverse()
+          .find((s) => !s.locked && hitTestShape(worldPt, s))
+        if (hit) {
+          deleteShapes([hit.id])
+          clearSelection()
+        }
+        return
+      }
+
       if (activeTool === "select") {
         // Check resize handles on selected shapes
         const selShapes = shapes.filter((s) => selectedIds.has(s.id))
@@ -161,7 +189,7 @@ export function useCanvasEngine({
           })
         }
       } else {
-        // Draw tool
+        // Draw tool — create initial shape
         const id = crypto.randomUUID() as ShapeId
         const base = {
           id,
@@ -177,27 +205,73 @@ export function useCanvasEngine({
           locked: false,
           createdBy: currentUserId,
           updatedAt: Date.now(),
+          ...BASE_V12,
         }
+
+        // Arrow and line use drawing-line mode (endpoint-based, not bbox-based)
+        if (activeTool === "arrow") {
+          const newShape: ArrowShape = {
+            ...base,
+            type: "arrow",
+            startX: worldPt.x,
+            startY: worldPt.y,
+            endX: worldPt.x,
+            endY: worldPt.y,
+            arrowHead: "end",
+          }
+          setShape(newShape)
+          setInteractionState({
+            mode: "drawing-line",
+            shape: newShape,
+            startWorld: worldPt,
+          })
+          return
+        }
+
+        if (activeTool === "line") {
+          const newShape: LineShape = {
+            ...base,
+            type: "line",
+            startX: worldPt.x,
+            startY: worldPt.y,
+            endX: worldPt.x,
+            endY: worldPt.y,
+          }
+          setShape(newShape)
+          setInteractionState({
+            mode: "drawing-line",
+            shape: newShape,
+            startWorld: worldPt,
+          })
+          return
+        }
+
         const newShape: Shape =
           activeTool === "rect"
             ? { ...base, type: "rect" }
             : activeTool === "ellipse"
               ? { ...base, type: "ellipse" }
-              : activeTool === "text"
-                ? {
-                    ...base,
-                    type: "text",
-                    content: "Text",
-                    fontSize: 16,
-                    fontFamily: "sans-serif",
-                    textAlign: "left",
-                  }
-                : { ...base, type: "pen", points: [worldPt] }
+              : activeTool === "diamond"
+                ? { ...base, type: "diamond" }
+                : activeTool === "triangle"
+                  ? { ...base, type: "triangle" }
+                  : activeTool === "star"
+                    ? { ...base, type: "star", points: 5 }
+                    : activeTool === "text"
+                      ? {
+                          ...base,
+                          type: "text",
+                          content: "Text",
+                          fontSize: 16,
+                          fontFamily: "sans-serif",
+                          textAlign: "left",
+                        }
+                      : { ...base, type: "pen", points: [worldPt] }
 
         setShape(newShape)
         setInteractionState({
           mode: "drawing",
-          tool: activeTool as "rect" | "ellipse" | "text" | "pen",
+          tool: activeTool as import("@/types/canvas").DrawTool,
           shape: newShape,
           startWorld: worldPt,
         })
@@ -212,6 +286,7 @@ export function useCanvasEngine({
       addToSelection,
       clearSelection,
       setShape,
+      deleteShapes,
       getPointerWorld,
       currentUserId,
       setInteractionState,
@@ -234,6 +309,35 @@ export function useCanvasEngine({
           x: state.startCamera.x + dx,
           y: state.startCamera.y + dy,
         })
+      } else if (state.mode === "erasing") {
+        // Hit test and delete any shape under the pointer while dragging
+        const hit = [...shapes]
+          .reverse()
+          .find((s) => !s.locked && hitTestShape(worldPt, s))
+        if (hit) {
+          deleteShapes([hit.id])
+        }
+      } else if (state.mode === "drawing-line") {
+        const { shape } = state
+        if (shape.type === "arrow") {
+          const updated: ArrowShape = {
+            ...shape,
+            endX: worldPt.x,
+            endY: worldPt.y,
+            updatedAt: Date.now(),
+          }
+          setShape(updated)
+          setInteractionState({ ...state, shape: updated })
+        } else {
+          const updated: LineShape = {
+            ...shape,
+            endX: worldPt.x,
+            endY: worldPt.y,
+            updatedAt: Date.now(),
+          }
+          setShape(updated)
+          setInteractionState({ ...state, shape: updated })
+        }
       } else if (state.mode === "drawing") {
         const { shape, startWorld } = state
         if (shape.type === "pen") {
@@ -300,6 +404,7 @@ export function useCanvasEngine({
       setCamera,
       setShape,
       batchSetShapes,
+      deleteShapes,
       shapes,
       setInteractionState,
     ]
@@ -322,6 +427,9 @@ export function useCanvasEngine({
         } else {
           setSelection([shape.id])
         }
+      } else if (state.mode === "drawing-line") {
+        // Always keep arrow/line — even zero-length ones are finalized on click
+        setSelection([state.shape.id])
       } else if (state.mode === "selecting") {
         const { startWorld, currentWorld } = state
         const boxX = Math.min(startWorld.x, currentWorld.x)

@@ -6,7 +6,7 @@ type UserListProps = { participants: AwarenessState[]; localUserId: string }
 export function UserList({ participants, localUserId }: UserListProps) {
   const others = participants.filter((p) => p.userId !== localUserId)
   return (
-    <div className="absolute top-4 right-4 flex -space-x-2 z-10">
+    <div className="flex items-center -space-x-2 z-10">
       {others.map((p) => (
         <div key={p.userId} className="relative group">
           <div

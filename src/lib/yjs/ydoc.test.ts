@@ -17,6 +17,6 @@ describe("isShape", () => {
     expect(isShape(null)).toBe(false)
   })
   it("returns false for unknown type", () => {
-    expect(isShape({ id: "a", type: "line" })).toBe(false)
+    expect(isShape({ id: "a", type: "unknown-type" })).toBe(false)
   })
 })

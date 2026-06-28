@@ -33,6 +33,9 @@ const BaseShapeSchema = z.object({
   locked: z.boolean(),
   createdBy: z.string().min(1),
   updatedAt: z.number().int().nonnegative(),
+  cornerRadius: z.number().min(0).default(0),
+  dashArray: z.array(z.number()).default([]),
+  fillStyle: z.enum(["solid", "hachure", "none"]).default("solid"),
 })
 
 // ---------------------------------------------------------------------------
@@ -61,6 +64,43 @@ export const PenShapeSchema = BaseShapeSchema.extend({
   points: z.array(PointSchema).min(2),
 })
 
+export const DiamondShapeSchema = BaseShapeSchema.extend({
+  type: z.literal("diamond"),
+})
+
+export const TriangleShapeSchema = BaseShapeSchema.extend({
+  type: z.literal("triangle"),
+})
+
+export const StarShapeSchema = BaseShapeSchema.extend({
+  type: z.literal("star"),
+  points: z.number().int().min(3).max(20),
+})
+
+export const ArrowShapeSchema = BaseShapeSchema.extend({
+  type: z.literal("arrow"),
+  startX: z.number().finite(),
+  startY: z.number().finite(),
+  endX: z.number().finite(),
+  endY: z.number().finite(),
+  arrowHead: z.enum(["none", "start", "end", "both"]),
+})
+
+export const LineShapeSchema = BaseShapeSchema.extend({
+  type: z.literal("line"),
+  startX: z.number().finite(),
+  startY: z.number().finite(),
+  endX: z.number().finite(),
+  endY: z.number().finite(),
+})
+
+export const ImageShapeSchema = BaseShapeSchema.extend({
+  type: z.literal("image"),
+  src: z.string().min(1),
+  naturalWidth: z.number().positive().finite(),
+  naturalHeight: z.number().positive().finite(),
+})
+
 // ---------------------------------------------------------------------------
 // Discriminated union — the primary public schema
 // ---------------------------------------------------------------------------
@@ -70,6 +110,12 @@ export const ShapeSchema = z.discriminatedUnion("type", [
   EllipseShapeSchema,
   TextShapeSchema,
   PenShapeSchema,
+  DiamondShapeSchema,
+  TriangleShapeSchema,
+  StarShapeSchema,
+  ArrowShapeSchema,
+  LineShapeSchema,
+  ImageShapeSchema,
 ])
 
 // ---------------------------------------------------------------------------
@@ -81,6 +127,12 @@ export type RectShapeValidated = z.infer<typeof RectShapeSchema>
 export type EllipseShapeValidated = z.infer<typeof EllipseShapeSchema>
 export type TextShapeValidated = z.infer<typeof TextShapeSchema>
 export type PenShapeValidated = z.infer<typeof PenShapeSchema>
+export type DiamondShapeValidated = z.infer<typeof DiamondShapeSchema>
+export type TriangleShapeValidated = z.infer<typeof TriangleShapeSchema>
+export type StarShapeValidated = z.infer<typeof StarShapeSchema>
+export type ArrowShapeValidated = z.infer<typeof ArrowShapeSchema>
+export type LineShapeValidated = z.infer<typeof LineShapeSchema>
+export type ImageShapeValidated = z.infer<typeof ImageShapeSchema>
 
 /** Union of all validated shape types — runtime-safe counterpart to `Shape`. */
 export type ShapeValidated = z.infer<typeof ShapeSchema>
@@ -99,4 +151,10 @@ export const ShapeUpdateSchema = z.union([
   EllipseShapeSchema.partial().required({ id: true }),
   TextShapeSchema.partial().required({ id: true }),
   PenShapeSchema.partial().required({ id: true }),
+  DiamondShapeSchema.partial().required({ id: true }),
+  TriangleShapeSchema.partial().required({ id: true }),
+  StarShapeSchema.partial().required({ id: true }),
+  ArrowShapeSchema.partial().required({ id: true }),
+  LineShapeSchema.partial().required({ id: true }),
+  ImageShapeSchema.partial().required({ id: true }),
 ])

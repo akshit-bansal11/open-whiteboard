@@ -39,16 +39,25 @@ export function SelectionHUD({ shapes }: SelectionHUDProps) {
       className="absolute inset-0 pointer-events-none"
       style={{ zIndex: 20 }}
     >
+      <div
+        className="absolute border border-blue-500/50"
+        style={{
+          left: bbox.x * camera.zoom + camera.x,
+          top: bbox.y * camera.zoom + camera.y,
+          width: bbox.width * camera.zoom,
+          height: bbox.height * camera.zoom,
+        }}
+      />
       {HANDLES.map((handle) => {
         const worldPos = handlePosition(handle, bbox)
         const screenPos = worldToScreen(worldPos, camera)
         return (
           <div
             key={handle}
-            className="absolute w-3 h-3 bg-white border-2 border-blue-500 rounded-sm"
+            className="absolute w-2.5 h-2.5 bg-white border border-blue-500 rounded-full shadow-sm"
             style={{
-              left: screenPos.x - 6,
-              top: screenPos.y - 6,
+              left: screenPos.x - 5,
+              top: screenPos.y - 5,
               pointerEvents: "auto",
               cursor: `${handle}-resize`,
             }}

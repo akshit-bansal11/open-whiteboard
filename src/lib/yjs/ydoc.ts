@@ -18,6 +18,17 @@ export function isShape(val: unknown): val is Shape {
     "id" in val &&
     "type" in val &&
     typeof (val as { type: unknown }).type === "string" &&
-    ["rect", "ellipse", "text", "pen"].includes((val as { type: string }).type)
+    [
+      "rect",
+      "ellipse",
+      "text",
+      "pen",
+      "diamond",
+      "triangle",
+      "star",
+      "arrow",
+      "line",
+      "image",
+    ].includes((val as { type: string }).type)
   )
 }

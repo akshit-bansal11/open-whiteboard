@@ -3,6 +3,8 @@ import type { Camera, Point, Shape } from "@/types/canvas"
 import {
   applyResize,
   applyRotation,
+  calculateFitAllCamera,
+  distanceToSegment,
   getResizeHandle,
   getSelectionBoundingBox,
   getShapeBoundingBox,
@@ -175,6 +177,40 @@ describe("getShapeBoundingBox", () => {
     const bbox = getShapeBoundingBox(pen)
     expect(bbox).toEqual({ x: 0, y: 0, width: 0, height: 0 })
   })
+
+  it("arrow — uses start and end coords", () => {
+    const arrow = {
+      ...makeRect(),
+      type: "arrow",
+      startX: 10,
+      startY: 20,
+      endX: 40,
+      endY: 60,
+    } as Shape
+    expect(getShapeBoundingBox(arrow)).toEqual({
+      x: 10,
+      y: 20,
+      width: 30,
+      height: 40,
+    })
+  })
+
+  it("line — uses start and end coords, handles negative width/height gracefully", () => {
+    const line = {
+      ...makeRect(),
+      type: "line",
+      startX: 50,
+      startY: 60,
+      endX: 10,
+      endY: 20,
+    } as Shape
+    expect(getShapeBoundingBox(line)).toEqual({
+      x: 10,
+      y: 20,
+      width: 40,
+      height: 40,
+    })
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -224,6 +260,19 @@ describe("hitTestShape", () => {
     const shape = makeRect({ x: 0, y: 0, width: 100, height: 50, rotation: 0 })
     expect(hitTestShape({ x: 0, y: 0 }, shape)).toBe(true)
     expect(hitTestShape({ x: 100, y: 50 }, shape)).toBe(true)
+  })
+
+  it("arrow/line — uses distanceToSegment within threshold", () => {
+    const arrow = {
+      ...makeRect(),
+      type: "arrow",
+      startX: 0,
+      startY: 0,
+      endX: 100,
+      endY: 0,
+    } as Shape
+    expect(hitTestShape({ x: 50, y: 4 }, arrow)).toBe(true)
+    expect(hitTestShape({ x: 50, y: 9 }, arrow)).toBe(false)
   })
 })
 
@@ -375,5 +424,74 @@ describe("applyRotation", () => {
     const shape = makeRect({ rotation: 0 })
     const result = applyRotation(shape, pivot, Math.PI * 2)
     expect(result.rotation).toBeCloseTo(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// distanceToSegment
+// ---------------------------------------------------------------------------
+
+describe("distanceToSegment", () => {
+  it("point exactly on the segment", () => {
+    expect(
+      distanceToSegment({ x: 5, y: 0 }, { x: 0, y: 0 }, { x: 10, y: 0 })
+    ).toBeCloseTo(0)
+  })
+
+  it("point collinear but outside segment - distance to closest endpoint", () => {
+    expect(
+      distanceToSegment({ x: 15, y: 0 }, { x: 0, y: 0 }, { x: 10, y: 0 })
+    ).toBeCloseTo(5)
+    expect(
+      distanceToSegment({ x: -5, y: 0 }, { x: 0, y: 0 }, { x: 10, y: 0 })
+    ).toBeCloseTo(5)
+  })
+
+  it("point perpendicularly above the segment", () => {
+    expect(
+      distanceToSegment({ x: 5, y: 10 }, { x: 0, y: 0 }, { x: 10, y: 0 })
+    ).toBeCloseTo(10)
+  })
+
+  it("zero-length segment", () => {
+    expect(
+      distanceToSegment({ x: 10, y: 0 }, { x: 5, y: 0 }, { x: 5, y: 0 })
+    ).toBeCloseTo(5)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// calculateFitAllCamera
+// ---------------------------------------------------------------------------
+
+describe("calculateFitAllCamera", () => {
+  it("fits exactly with padding", () => {
+    const bbox = { x: 100, y: 100, width: 200, height: 200 }
+    // Viewport 400x400, pad 50 -> usable 300x300.
+    // Scale needed = 300 / 200 = 1.5 zoom.
+    const cam = calculateFitAllCamera(bbox, 400, 400, 50)
+    expect(cam.zoom).toBeCloseTo(1.5)
+    // Centered: Box at 100x100 * 1.5 = 150x150 width 300x300
+    // Box covers (150,150) to (450,450)
+    // We want it centered in 400x400 -> usable box is 300x300, offset should leave 50 on each side.
+    // Screen X = (worldX + camX) * zoom => Wait, my formula is:
+    // x: -bbox.x * zoom + (viewportWidth - bbox.width * zoom) / 2
+    // x = -100 * 1.5 + (400 - 300)/2 = -150 + 50 = -100
+    expect(cam.x).toBeCloseTo(-100)
+    expect(cam.y).toBeCloseTo(-100)
+  })
+
+  it("clamps to ZOOM_MAX", () => {
+    const bbox = { x: 0, y: 0, width: 10, height: 10 }
+    // Viewport 1000x1000, pad 0. Scale = 100 -> clamped to 5
+    const cam = calculateFitAllCamera(bbox, 1000, 1000, 0)
+    expect(cam.zoom).toBeCloseTo(20) // from ZOOM_MAX
+  })
+
+  it("clamps to ZOOM_MIN", () => {
+    const bbox = { x: 0, y: 0, width: 10000, height: 10000 }
+    // Viewport 100x100, pad 0. Scale = 0.01 -> clamped to 0.1
+    const cam = calculateFitAllCamera(bbox, 100, 100, 0)
+    expect(cam.zoom).toBeCloseTo(0.05) // from ZOOM_MIN
   })
 })

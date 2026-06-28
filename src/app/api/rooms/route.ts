@@ -1,8 +1,10 @@
+import * as bcrypt from "bcryptjs"
 import { nanoid } from "nanoid"
-import { RoomIdParamSchema } from "@/lib/validations/room"
-
-// In-memory store — rooms reset on server restart (acceptable for V1)
-const rooms = new Map<string, { roomId: string; createdAt: number }>()
+import { roomStore } from "@/lib/rooms"
+import {
+  CreateRoomRequestSchema,
+  RoomIdParamSchema,
+} from "@/lib/validations/room"
 
 function errorResponse(
   status: number,
@@ -17,9 +19,25 @@ function errorResponse(
 }
 
 export async function POST(req: Request) {
+  let passwordHash: string | undefined
+
+  try {
+    const body = await req.json()
+    const parsed = CreateRoomRequestSchema.safeParse(body)
+    if (!parsed.success) {
+      return errorResponse(400, "Bad Request", "Invalid request body", req.url)
+    }
+
+    if (parsed.data.password && parsed.data.password.length > 0) {
+      passwordHash = await bcrypt.hash(parsed.data.password, 10)
+    }
+  } catch (_e) {
+    // Empty body is fine, just means no password
+  }
+
   const roomId = nanoid(10)
-  const createdAt = Date.now()
-  rooms.set(roomId, { roomId, createdAt })
+  await roomStore.createRoom(roomId, passwordHash)
+
   const shareUrl = `${new URL(req.url).origin}/room/${roomId}`
   return Response.json({ data: { roomId, shareUrl } }, { status: 201 })
 }
@@ -36,7 +54,17 @@ export async function GET(req: Request) {
       req.url
     )
   }
-  const room = rooms.get(parsed.data)
-  if (!room) return errorResponse(404, "Not Found", "Room not found", req.url)
-  return Response.json({ data: room })
+
+  const room = await roomStore.getRoom(parsed.data)
+  if (!room) {
+    return errorResponse(404, "Not Found", "Room not found", req.url)
+  }
+
+  return Response.json({
+    data: {
+      roomId: room.id,
+      createdAt: room.createdAt,
+      passwordRequired: room.passwordHash !== undefined,
+    },
+  })
 }

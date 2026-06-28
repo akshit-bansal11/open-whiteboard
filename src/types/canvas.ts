@@ -11,10 +11,17 @@ export const TOOLS = [
   "text",
   "pen",
   "pan",
+  "diamond",
+  "triangle",
+  "star",
+  "arrow",
+  "line",
+  "image",
+  "eraser",
 ] as const
 export type Tool = (typeof TOOLS)[number]
 
-export type DrawTool = Exclude<Tool, "select" | "pan">
+export type DrawTool = Exclude<Tool, "select" | "pan" | "eraser">
 
 export const RESIZE_HANDLES = [
   "nw",
@@ -46,7 +53,7 @@ export type BoundingBox = {
   height: number
 }
 
-type BaseShape = {
+export type BaseShape = {
   readonly id: ShapeId
   x: number
   y: number
@@ -60,6 +67,9 @@ type BaseShape = {
   locked: boolean
   readonly createdBy: string
   updatedAt: number
+  cornerRadius: number
+  dashArray: number[]
+  fillStyle: "solid" | "hachure" | "none"
 }
 
 export type RectShape = BaseShape & { type: "rect" }
@@ -79,7 +89,47 @@ export type PenShape = BaseShape & {
   points: Point[]
 }
 
-export type Shape = RectShape | EllipseShape | TextShape | PenShape
+export type DiamondShape = BaseShape & { type: "diamond" }
+
+export type TriangleShape = BaseShape & { type: "triangle" }
+
+export type StarShape = BaseShape & { type: "star"; points: number }
+
+export type ArrowShape = BaseShape & {
+  type: "arrow"
+  startX: number
+  startY: number
+  endX: number
+  endY: number
+  arrowHead: "none" | "start" | "end" | "both"
+}
+
+export type LineShape = BaseShape & {
+  type: "line"
+  startX: number
+  startY: number
+  endX: number
+  endY: number
+}
+
+export type ImageShape = BaseShape & {
+  type: "image"
+  src: string
+  naturalWidth: number
+  naturalHeight: number
+}
+
+export type Shape =
+  | RectShape
+  | EllipseShape
+  | TextShape
+  | PenShape
+  | DiamondShape
+  | TriangleShape
+  | StarShape
+  | ArrowShape
+  | LineShape
+  | ImageShape
 
 // Type guards
 export function isTextShape(s: Shape): s is TextShape {
@@ -88,6 +138,18 @@ export function isTextShape(s: Shape): s is TextShape {
 
 export function isPenShape(s: Shape): s is PenShape {
   return s.type === "pen"
+}
+
+export function isArrowShape(s: Shape): s is ArrowShape {
+  return s.type === "arrow"
+}
+
+export function isLineShape(s: Shape): s is LineShape {
+  return s.type === "line"
+}
+
+export function isImageShape(s: Shape): s is ImageShape {
+  return s.type === "image"
 }
 
 export type SelectionState = {
@@ -115,3 +177,9 @@ export type InteractionState =
     }
   | { mode: "selecting"; startWorld: Point; currentWorld: Point }
   | { mode: "editing-text"; shapeId: ShapeId }
+  | { mode: "erasing" }
+  | {
+      mode: "drawing-line"
+      shape: LineShape | ArrowShape
+      startWorld: Point
+    }

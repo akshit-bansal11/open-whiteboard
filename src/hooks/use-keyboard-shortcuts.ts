@@ -9,6 +9,7 @@ type ShortcutsProps = {
   shapes: Shape[]
   deleteShapes: (ids: ShapeId[]) => void
   setShape: (s: Shape) => void
+  onImagePaste?: (file: File) => void
 }
 
 export function useKeyboardShortcuts({
@@ -16,9 +17,17 @@ export function useKeyboardShortcuts({
   shapes,
   deleteShapes,
   setShape,
+  onImagePaste,
 }: ShortcutsProps) {
-  const { setTool, selectedIds, setSelection, clearSelection, toggleGrid } =
-    useUIStore()
+  const {
+    setTool,
+    selectedIds,
+    setSelection,
+    clearSelection,
+    toggleGrid,
+    setExportPanelOpen,
+    setCamera,
+  } = useUIStore()
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
@@ -39,6 +48,11 @@ export function useKeyboardShortcuts({
         if (e.key === "t" || e.key === "T") setTool("text")
         if (e.key === "p" || e.key === "P") setTool("pen")
         if (e.key === "h" || e.key === "H") setTool("pan")
+        if (e.key === "d" || e.key === "D") setTool("diamond")
+        if (e.key === "n" || e.key === "N") setTool("line")
+        if (e.key === "a" || e.key === "A") setTool("arrow")
+        if (e.key === "i" || e.key === "I") setTool("image")
+        if (e.key === "x" || e.key === "X") setTool("eraser")
         if (e.key === "g" || e.key === "G") toggleGrid()
       }
 
@@ -88,12 +102,61 @@ export function useKeyboardShortcuts({
         }
       }
 
+      // Export
+      if (meta && e.key === "e") {
+        e.preventDefault()
+        setExportPanelOpen(true)
+      }
+
+      // Fit All
+      if (meta && e.shiftKey && (e.key === "f" || e.key === "F")) {
+        e.preventDefault()
+        if (shapes.length > 0) {
+          const {
+            getSelectionBoundingBox,
+            calculateFitAllCamera,
+          } = require("@/lib/canvas/math")
+          const canvas = document.querySelector("canvas")
+          if (canvas) {
+            const bbox = getSelectionBoundingBox(shapes)
+            if (bbox) {
+              const cam = calculateFitAllCamera(
+                bbox,
+                canvas.width,
+                canvas.height,
+                64
+              )
+              setCamera(cam)
+            }
+          }
+        }
+      }
+
       // Escape
       if (e.key === "Escape") clearSelection()
     }
 
+    const paste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items
+      if (!items) return
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith("image/")) {
+          const file = item.getAsFile()
+          if (file && onImagePaste) {
+            onImagePaste(file)
+            e.preventDefault()
+            break
+          }
+        }
+      }
+    }
+
     window.addEventListener("keydown", down)
-    return () => window.removeEventListener("keydown", down)
+    window.addEventListener("paste", paste)
+    return () => {
+      window.removeEventListener("keydown", down)
+      window.removeEventListener("paste", paste)
+    }
   }, [
     undoManager,
     shapes,
@@ -104,5 +167,8 @@ export function useKeyboardShortcuts({
     deleteShapes,
     setShape,
     toggleGrid,
+    setExportPanelOpen,
+    setCamera,
+    onImagePaste,
   ])
 }

@@ -1,5 +1,6 @@
 "use client"
 import { useCallback, useEffect, useRef, useState } from "react"
+import { IndexeddbPersistence } from "y-indexeddb"
 import * as Y from "yjs"
 import { createProvider, type ProviderStatus } from "@/lib/yjs/provider"
 import { createYDoc, isShape } from "@/lib/yjs/ydoc"
@@ -24,6 +25,14 @@ export function useYjsSync(roomId: string) {
       setConnectionStatus
     )
 
+    // Local persistence via IndexedDB
+    const indexeddbProvider = new IndexeddbPersistence(roomId, doc)
+
+    // Optional: when data is loaded from local DB, you might want to force a re-render
+    indexeddbProvider.on("synced", () => {
+      setShapes(Array.from(yShapes.values()).filter(isShape))
+    })
+
     docRef.current = { doc, shapes: yShapes, meta }
     providerRef.current = { provider, undoManager }
 
@@ -37,6 +46,7 @@ export function useYjsSync(roomId: string) {
     return () => {
       yShapes.unobserve(handleObserve)
       provider.destroy()
+      indexeddbProvider.destroy()
       doc.destroy()
     }
   }, [roomId])

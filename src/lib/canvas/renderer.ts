@@ -1,5 +1,15 @@
 import { GRID_SIZE } from "@/constants/canvas"
-import type { Camera, Shape } from "@/types/canvas"
+import type {
+  ArrowShape,
+  BaseShape,
+  Camera,
+  DiamondShape,
+  ImageShape,
+  LineShape,
+  Shape,
+  StarShape,
+  TriangleShape,
+} from "@/types/canvas"
 import type { AwarenessState } from "@/types/user"
 
 type RenderParams = {
@@ -10,6 +20,15 @@ type RenderParams = {
   cursors: AwarenessState[]
   selectionBox: { x: number; y: number; width: number; height: number } | null
 }
+
+// ---------------------------------------------------------------------------
+// Image decode cache — avoids re-decoding base64 on every rAF
+// ---------------------------------------------------------------------------
+const imageCache = new Map<string, HTMLImageElement>()
+
+// ---------------------------------------------------------------------------
+// Public render entry point
+// ---------------------------------------------------------------------------
 
 export function renderFrame({
   ctx,
@@ -65,33 +84,11 @@ export function renderFrame({
 
     switch (shape.type) {
       case "rect":
-        ctx.fillStyle = shape.fill
-        ctx.strokeStyle = shape.stroke
-        ctx.lineWidth = shape.strokeWidth
-        if (shape.fill !== "transparent")
-          ctx.fillRect(shape.x, shape.y, shape.width, shape.height)
-        if (shape.strokeWidth > 0)
-          ctx.strokeRect(shape.x, shape.y, shape.width, shape.height)
+        renderRect(ctx, shape)
         break
-
       case "ellipse":
-        ctx.fillStyle = shape.fill
-        ctx.strokeStyle = shape.stroke
-        ctx.lineWidth = shape.strokeWidth
-        ctx.beginPath()
-        ctx.ellipse(
-          shape.x + shape.width / 2,
-          shape.y + shape.height / 2,
-          shape.width / 2,
-          shape.height / 2,
-          0,
-          0,
-          Math.PI * 2
-        )
-        if (shape.fill !== "transparent") ctx.fill()
-        if (shape.strokeWidth > 0) ctx.stroke()
+        renderEllipse(ctx, shape)
         break
-
       case "text":
         ctx.font = `${shape.fontSize}px ${shape.fontFamily}`
         ctx.fillStyle = shape.fill
@@ -107,13 +104,13 @@ export function renderFrame({
           ctx.fillText(shape.content, tx, shape.y, shape.width)
         }
         break
-
       case "pen":
         if (shape.points.length >= 2) {
           ctx.strokeStyle = shape.stroke
           ctx.lineWidth = shape.strokeWidth
           ctx.lineCap = "round"
           ctx.lineJoin = "round"
+          if (shape.dashArray.length) ctx.setLineDash(shape.dashArray)
           const path = new Path2D()
           const first = shape.points[0]
           if (first) {
@@ -134,20 +131,41 @@ export function renderFrame({
             if (last) path.lineTo(last.x, last.y)
             ctx.stroke(path)
           }
+          ctx.setLineDash([])
         }
+        break
+      case "diamond":
+        renderDiamond(ctx, shape)
+        break
+      case "triangle":
+        renderTriangle(ctx, shape)
+        break
+      case "star":
+        renderStar(ctx, shape)
+        break
+      case "arrow":
+        renderArrow(ctx, shape)
+        break
+      case "line":
+        renderLine(ctx, shape)
+        break
+      case "image":
+        renderImage(ctx, shape)
         break
     }
 
     // Selection outline
     if (selection.includes(shape.id)) {
+      ctx.setLineDash([])
+      const bbox = getShapeRenderBbox(shape)
       ctx.strokeStyle = "#3b82f6"
       ctx.lineWidth = 2 / zoom
       ctx.setLineDash([4 / zoom, 2 / zoom])
       ctx.strokeRect(
-        shape.x - 1 / zoom,
-        shape.y - 1 / zoom,
-        shape.width + 2 / zoom,
-        shape.height + 2 / zoom
+        bbox.x - 1 / zoom,
+        bbox.y - 1 / zoom,
+        bbox.w + 2 / zoom,
+        bbox.h + 2 / zoom
       )
       ctx.setLineDash([])
     }
@@ -191,4 +209,194 @@ export function renderFrame({
     ctx.fillText(cursor.name, sx + 10, sy + 4)
     ctx.restore()
   }
+}
+
+// ---------------------------------------------------------------------------
+// Per-shape renderers
+// ---------------------------------------------------------------------------
+
+function renderRect(
+  ctx: CanvasRenderingContext2D,
+  shape: BaseShape & { type: "rect" }
+) {
+  ctx.beginPath()
+  if (shape.cornerRadius > 0) {
+    ctx.roundRect(
+      shape.x,
+      shape.y,
+      shape.width,
+      shape.height,
+      shape.cornerRadius
+    )
+  } else {
+    ctx.rect(shape.x, shape.y, shape.width, shape.height)
+  }
+  applyFillStroke(ctx, shape)
+}
+
+function renderEllipse(
+  ctx: CanvasRenderingContext2D,
+  shape: BaseShape & { type: "ellipse" }
+) {
+  ctx.beginPath()
+  ctx.ellipse(
+    shape.x + shape.width / 2,
+    shape.y + shape.height / 2,
+    shape.width / 2,
+    shape.height / 2,
+    0,
+    0,
+    Math.PI * 2
+  )
+  applyFillStroke(ctx, shape)
+}
+
+function renderDiamond(ctx: CanvasRenderingContext2D, shape: DiamondShape) {
+  const cx = shape.x + shape.width / 2
+  const cy = shape.y + shape.height / 2
+  ctx.beginPath()
+  ctx.moveTo(cx, shape.y)
+  ctx.lineTo(shape.x + shape.width, cy)
+  ctx.lineTo(cx, shape.y + shape.height)
+  ctx.lineTo(shape.x, cy)
+  ctx.closePath()
+  applyFillStroke(ctx, shape)
+}
+
+function renderTriangle(ctx: CanvasRenderingContext2D, shape: TriangleShape) {
+  ctx.beginPath()
+  ctx.moveTo(shape.x + shape.width / 2, shape.y)
+  ctx.lineTo(shape.x + shape.width, shape.y + shape.height)
+  ctx.lineTo(shape.x, shape.y + shape.height)
+  ctx.closePath()
+  applyFillStroke(ctx, shape)
+}
+
+function renderStar(ctx: CanvasRenderingContext2D, shape: StarShape) {
+  const cx = shape.x + shape.width / 2
+  const cy = shape.y + shape.height / 2
+  const outerR = Math.min(shape.width, shape.height) / 2
+  const innerR = outerR * 0.4
+  const n = shape.points
+  ctx.beginPath()
+  for (let i = 0; i < n * 2; i++) {
+    const angle = (i * Math.PI) / n - Math.PI / 2
+    const r = i % 2 === 0 ? outerR : innerR
+    const x = cx + r * Math.cos(angle)
+    const y = cy + r * Math.sin(angle)
+    if (i === 0) ctx.moveTo(x, y)
+    else ctx.lineTo(x, y)
+  }
+  ctx.closePath()
+  applyFillStroke(ctx, shape)
+}
+
+function renderArrow(ctx: CanvasRenderingContext2D, shape: ArrowShape) {
+  const { startX, startY, endX, endY } = shape
+  if (shape.dashArray.length) ctx.setLineDash(shape.dashArray)
+  ctx.beginPath()
+  ctx.moveTo(startX, startY)
+  ctx.lineTo(endX, endY)
+  ctx.strokeStyle = shape.stroke
+  ctx.lineWidth = shape.strokeWidth
+  ctx.stroke()
+  ctx.setLineDash([])
+
+  const angle = Math.atan2(endY - startY, endX - startX)
+  const headLen = 14
+  if (shape.arrowHead === "end" || shape.arrowHead === "both") {
+    drawArrowHead(ctx, endX, endY, angle, headLen, shape)
+  }
+  if (shape.arrowHead === "start" || shape.arrowHead === "both") {
+    drawArrowHead(ctx, startX, startY, angle + Math.PI, headLen, shape)
+  }
+}
+
+function drawArrowHead(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  angle: number,
+  len: number,
+  shape: ArrowShape
+) {
+  ctx.beginPath()
+  ctx.moveTo(x, y)
+  ctx.lineTo(
+    x - len * Math.cos(angle - Math.PI / 6),
+    y - len * Math.sin(angle - Math.PI / 6)
+  )
+  ctx.moveTo(x, y)
+  ctx.lineTo(
+    x - len * Math.cos(angle + Math.PI / 6),
+    y - len * Math.sin(angle + Math.PI / 6)
+  )
+  ctx.strokeStyle = shape.stroke
+  ctx.lineWidth = shape.strokeWidth
+  ctx.stroke()
+}
+
+function renderLine(ctx: CanvasRenderingContext2D, shape: LineShape) {
+  if (shape.dashArray.length) ctx.setLineDash(shape.dashArray)
+  ctx.beginPath()
+  ctx.moveTo(shape.startX, shape.startY)
+  ctx.lineTo(shape.endX, shape.endY)
+  ctx.strokeStyle = shape.stroke
+  ctx.lineWidth = shape.strokeWidth
+  ctx.stroke()
+  ctx.setLineDash([])
+}
+
+function renderImage(ctx: CanvasRenderingContext2D, shape: ImageShape) {
+  const img = imageCache.get(shape.id)
+  if (!img) {
+    const newImg = new Image()
+    newImg.src = shape.src
+    newImg.onload = () => imageCache.set(shape.id, newImg)
+    return // skip this frame — will render next rAF once decoded
+  }
+  if (img.complete)
+    ctx.drawImage(img, shape.x, shape.y, shape.width, shape.height)
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Applies fill and stroke to the current path, reading dashArray and fillStyle.
+ */
+function applyFillStroke(ctx: CanvasRenderingContext2D, shape: BaseShape) {
+  if (shape.dashArray.length) ctx.setLineDash(shape.dashArray)
+  if (shape.fillStyle !== "none" && shape.fill !== "transparent") {
+    ctx.fillStyle = shape.fill
+    ctx.fill()
+  }
+  if (shape.strokeWidth > 0) {
+    ctx.strokeStyle = shape.stroke
+    ctx.lineWidth = shape.strokeWidth
+    ctx.stroke()
+  }
+  ctx.setLineDash([])
+}
+
+/**
+ * Returns a simple x/y/w/h for selection outline rendering.
+ * Arrow and line shapes use startX/endX rather than x/width.
+ */
+function getShapeRenderBbox(shape: Shape): {
+  x: number
+  y: number
+  w: number
+  h: number
+} {
+  if (shape.type === "arrow" || shape.type === "line") {
+    return {
+      x: Math.min(shape.startX, shape.endX),
+      y: Math.min(shape.startY, shape.endY),
+      w: Math.abs(shape.endX - shape.startX),
+      h: Math.abs(shape.endY - shape.startY),
+    }
+  }
+  return { x: shape.x, y: shape.y, w: shape.width, h: shape.height }
 }
