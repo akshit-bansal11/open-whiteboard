@@ -8,13 +8,13 @@
  */
 
 import { createServer } from "node:http"
-import { WebSocketServer, type WebSocket } from "ws"
-import { Server as IOServer, type Socket } from "socket.io"
-import * as Y from "yjs"
-import * as syncProtocol from "y-protocols/sync"
-import * as awarenessProtocol from "y-protocols/awareness"
-import * as encoding from "lib0/encoding"
 import * as decoding from "lib0/decoding"
+import * as encoding from "lib0/encoding"
+import { Server as IOServer, type Socket } from "socket.io"
+import { type WebSocket, WebSocketServer } from "ws"
+import * as awarenessProtocol from "y-protocols/awareness"
+import * as syncProtocol from "y-protocols/sync"
+import * as Y from "yjs"
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -74,7 +74,7 @@ function getOrCreateYjsRoom(roomId: string): YjsRoom {
       encoding.writeVarUint(encoder, MESSAGE_AWARENESS)
       encoding.writeVarUint8Array(
         encoder,
-        awarenessProtocol.encodeAwarenessUpdate(awareness, changedClients),
+        awarenessProtocol.encodeAwarenessUpdate(awareness, changedClients)
       )
       const message = encoding.toUint8Array(encoder)
       for (const conn of room.connections) {
@@ -82,7 +82,7 @@ function getOrCreateYjsRoom(roomId: string): YjsRoom {
           conn.send(message, { binary: true })
         }
       }
-    },
+    }
   )
 
   return room
@@ -109,8 +109,8 @@ function handleYjsConnection(ws: WebSocket, roomId: string): void {
       awarenessEncoder,
       awarenessProtocol.encodeAwarenessUpdate(
         room.awareness,
-        Array.from(awarenessStates.keys()),
-      ),
+        Array.from(awarenessStates.keys())
+      )
     )
     ws.send(encoding.toUint8Array(awarenessEncoder), { binary: true })
   }
@@ -128,7 +128,7 @@ function handleYjsConnection(ws: WebSocket, roomId: string): void {
           replyEncoder,
           room.doc,
           // Pass ws as origin so the doc.on("update") handler skips this sender
-          ws,
+          ws
         )
         // Only send reply if there's content (step1 produces a step2 reply)
         if (
@@ -141,7 +141,7 @@ function handleYjsConnection(ws: WebSocket, roomId: string): void {
         awarenessProtocol.applyAwarenessUpdate(
           room.awareness,
           decoding.readVarUint8Array(decoder),
-          ws,
+          ws
         )
       }
     } catch {
@@ -156,7 +156,7 @@ function handleYjsConnection(ws: WebSocket, roomId: string): void {
     awarenessProtocol.removeAwarenessStates(
       room.awareness,
       [room.doc.clientID],
-      null,
+      null
     )
 
     // GC empty rooms
@@ -224,7 +224,9 @@ io.on("connection", (socket: Socket) => {
   socket.to(roomId).emit("user-joined", { userId, name, color })
 
   socket.on("cursor", (pos: { x: number; y: number }) => {
-    socket.to(roomId).emit("cursor", { userId, name, color, x: pos.x, y: pos.y })
+    socket
+      .to(roomId)
+      .emit("cursor", { userId, name, color, x: pos.x, y: pos.y })
   })
 
   socket.on("selection", (ids: string[]) => {

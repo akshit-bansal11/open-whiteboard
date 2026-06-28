@@ -1,4 +1,9 @@
-import { HANDLE_SIZE, MIN_SHAPE_SIZE } from "@/constants/canvas"
+import {
+  HANDLE_SIZE,
+  MIN_SHAPE_SIZE,
+  ZOOM_MAX,
+  ZOOM_MIN,
+} from "@/constants/canvas"
 import type {
   BoundingBox,
   Camera,
@@ -6,6 +11,43 @@ import type {
   ResizeHandle,
   Shape,
 } from "@/types/canvas"
+
+// ---------------------------------------------------------------------------
+// Math primitives
+// ---------------------------------------------------------------------------
+
+/**
+ * Clamps a value between min and max.
+ */
+export function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, value))
+}
+
+/**
+ * Returns the Euclidean distance between two points.
+ */
+export function getDistanceBetweenPoints(a: Point, b: Point): number {
+  return Math.sqrt((b.x - a.x) ** 2 + (b.y - a.y) ** 2)
+}
+
+/**
+ * Zoom toward a screen-space point.
+ * Adjusts camera offset so the world point under the pointer stays fixed.
+ */
+export function zoomToward(
+  camera: Camera,
+  screenPoint: Point,
+  newZoom: number
+): Camera {
+  const clampedZoom = clamp(newZoom, ZOOM_MIN, ZOOM_MAX)
+  const worldX = (screenPoint.x - camera.x) / camera.zoom
+  const worldY = (screenPoint.y - camera.y) / camera.zoom
+  return {
+    zoom: clampedZoom,
+    x: screenPoint.x - worldX * clampedZoom,
+    y: screenPoint.y - worldY * clampedZoom,
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Coordinate conversion
