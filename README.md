@@ -1,6 +1,6 @@
-# Coform
+# Open-Whiteboard
 
-Coform is an open-source, real-time collaborative canvas built with Next.js, Yjs, and HTML5 Canvas. It provides a frictionless whiteboard experience that works instantly in the browser without requiring any accounts or logins.
+Open-Whiteboard is an open-source, real-time collaborative canvas built with Next.js, Yjs, and HTML5 Canvas. It provides a frictionless whiteboard experience that works instantly in the browser without requiring any accounts or logins.
 
 ## Features
 
@@ -15,11 +15,11 @@ Coform is an open-source, real-time collaborative canvas built with Next.js, Yjs
 
 ## Architecture
 
-Coform uses a CRDT-based architecture for seamless conflict resolution and real-time multiplayer editing:
+Open-Whiteboard uses a CRDT-based architecture for seamless conflict resolution and real-time multiplayer editing:
 
 - **Client:** React (Next.js App Router) + custom raw HTML5 Canvas engine for rendering. State is managed by Yjs and Zustand.
 - **Network:** WebSocket sync powered by `y-websocket`.
-- **Server:** Custom Node.js WebSocket server (`src/server/ws-server.ts`) that keeps Yjs documents in memory. 
+- **Server:** Custom Node.js WebSocket server (`src/server/ws-server.ts`) that keeps Yjs documents in memory.
 - **Storage:** Data is intentionally **not** persisted to disk on the server by default (Privacy-First approach). However, an optional Redis adapter can be configured.
 
 ## Quick Start
@@ -41,25 +41,25 @@ Coform uses a CRDT-based architecture for seamless conflict resolution and real-
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `3000` | Port for the Next.js application |
-| `WS_PORT` | `1234` | Port for the WebSocket synchronization server |
-| `NEXT_PUBLIC_WS_URL` | `ws://localhost:1234` | WebSocket URL for the client to connect to |
-| `ROOM_STORE` | `memory` | Set to `redis` to enable persistent room metadata |
-| `REDIS_URL` | `redis://localhost:6379` | Required if `ROOM_STORE=redis` |
+| Variable             | Default                  | Description                                       |
+| -------------------- | ------------------------ | ------------------------------------------------- |
+| `PORT`               | `3000`                   | Port for the Next.js application                  |
+| `WS_PORT`            | `1234`                   | Port for the WebSocket synchronization server     |
+| `NEXT_PUBLIC_WS_URL` | `ws://localhost:1234`    | WebSocket URL for the client to connect to        |
+| `ROOM_STORE`         | `memory`                 | Set to `redis` to enable persistent room metadata |
+| `REDIS_URL`          | `redis://localhost:6379` | Required if `ROOM_STORE=redis`                    |
 
 ## Room Storage
 
-By default, Coform operates entirely **in-memory**. When you create a room, its metadata and canvas data are kept in the Node process's memory. If the server restarts, all rooms are wiped.
+By default, Open-Whiteboard operates entirely **in-memory**. When you create a room, its metadata and canvas data are kept in the Node process's memory. If the server restarts, all rooms are wiped.
 
-If you want persistent room configurations (e.g. passwords and metadata), you can opt-in to Redis storage by setting `ROOM_STORE=redis` and `REDIS_URL`. Note: The actual *canvas drawing data* (Yjs documents) always remains in memory on the WebSocket server to ensure maximum privacy.
+If you want persistent room configurations (e.g. passwords and metadata), you can opt-in to Redis storage by setting `ROOM_STORE=redis` and `REDIS_URL`. Note: The actual _canvas drawing data_ (Yjs documents) always remains in memory on the WebSocket server to ensure maximum privacy.
 
 ## Privacy
 
-**Coform is designed with privacy as a core feature.**
+**Open-Whiteboard is designed with privacy as a core feature.**
 
-Your canvas data lives locally in your browser (via IndexedDB) and in memory on the server for real-time synchronization. **The server never writes canvas drawings or text to disk or to a database.** 
+Your canvas data lives locally in your browser (via IndexedDB) and in memory on the server for real-time synchronization. **The server never writes canvas drawings or text to disk or to a database.**
 
 When the last person leaves a room, the server's in-memory copy is immediately deleted. Your data only persists in your own browser's cache for quick reloading. You can clear this at any time from the room header's `...` menu.
 
@@ -71,28 +71,28 @@ If you are self-hosting and need to support larger images, you can modify the `M
 
 ## Keyboard Shortcuts
 
-| Shortcut | Action |
-|----------|--------|
-| `V` | Select tool |
-| `R` | Rectangle tool |
-| `E` | Ellipse tool |
-| `D` | Diamond tool |
-| `N` | Line tool |
-| `A` | Arrow tool |
-| `T` | Text tool |
-| `I` | Image tool |
-| `P` | Pen tool |
-| `X` | Eraser tool |
-| `H` / `Space` | Pan tool |
-| `G` | Toggle grid |
-| `Ctrl+E` | Open export panel |
-| `Ctrl+A` | Select all |
-| `Ctrl+D` | Duplicate selection |
-| `Ctrl+Z` | Undo |
-| `Ctrl+Shift+Z` / `Ctrl+Y` | Redo |
-| `Ctrl+Shift+F` | Fit all shapes into view |
-| `Delete` / `Backspace` | Delete selected shapes |
-| `Esc` | Clear selection / Cancel tool |
+| Shortcut                  | Action                        |
+| ------------------------- | ----------------------------- |
+| `V`                       | Select tool                   |
+| `R`                       | Rectangle tool                |
+| `E`                       | Ellipse tool                  |
+| `D`                       | Diamond tool                  |
+| `N`                       | Line tool                     |
+| `A`                       | Arrow tool                    |
+| `T`                       | Text tool                     |
+| `I`                       | Image tool                    |
+| `P`                       | Pen tool                      |
+| `X`                       | Eraser tool                   |
+| `H` / `Space`             | Pan tool                      |
+| `G`                       | Toggle grid                   |
+| `Ctrl+E`                  | Open export panel             |
+| `Ctrl+A`                  | Select all                    |
+| `Ctrl+D`                  | Duplicate selection           |
+| `Ctrl+Z`                  | Undo                          |
+| `Ctrl+Shift+Z` / `Ctrl+Y` | Redo                          |
+| `Ctrl+Shift+F`            | Fit all shapes into view      |
+| `Delete` / `Backspace`    | Delete selected shapes        |
+| `Esc`                     | Clear selection / Cancel tool |
 
 ## Contributing
 
