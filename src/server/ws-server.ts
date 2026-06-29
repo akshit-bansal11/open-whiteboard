@@ -18,7 +18,7 @@ import * as Y from "yjs"
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const PORT = Number(process.env.WS_PORT ?? 1234)
+const PORT = Number(process.env.PORT ?? process.env.WS_PORT ?? 1234)
 const CLIENT_URL = process.env.CLIENT_URL ?? "http://localhost:3000"
 
 const MESSAGE_SYNC = 0
