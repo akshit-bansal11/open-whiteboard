@@ -119,15 +119,6 @@ export default function HomePage() {
           </button>
         </div>
 
-        {/* Privacy Note */}
-        <div className="w-full p-4 rounded-xl bg-blue-950/20 border border-blue-900/30 text-center">
-          <p className="text-xs text-blue-200/70 leading-relaxed">
-            Your canvas data lives in your browser and in-memory on the server.
-            The server never writes it to disk. When the last person leaves a
-            room, the data is gone.
-          </p>
-        </div>
-
         {/* Recent Boards */}
         {recentRooms.length > 0 && (
           <div className="w-full mt-2 flex flex-col gap-3">
