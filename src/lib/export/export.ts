@@ -74,7 +74,7 @@ export async function exportCanvas(
   // Export
   if (format === "png") {
     const dataUrl = canvas.toDataURL("image/png")
-    downloadFile(dataUrl, "coform-export.png")
+    downloadFile(dataUrl, "open-whiteboard-export.png")
   } else if (format === "svg") {
     // For V1, SVG export is a bit complex since we render via Canvas2D.
     // A true SVG export would need a dedicated shape-to-SVG mapping.

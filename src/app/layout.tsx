@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "Coform",
+  title: "Open-Whiteboard",
   description: "Collaborative canvas for teams",
 }
 

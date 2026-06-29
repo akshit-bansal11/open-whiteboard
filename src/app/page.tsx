@@ -50,7 +50,7 @@ export default function HomePage() {
         {/* Header */}
         <div className="flex flex-col items-center gap-3 text-center">
           <h1 className="text-6xl font-extrabold tracking-tight bg-gradient-to-br from-blue-400 to-purple-500 bg-clip-text text-transparent drop-shadow-sm">
-            Coform
+            Open-Whiteboard
           </h1>
           <p className="text-zinc-300 text-lg font-medium">
             Open-source collaborative canvas

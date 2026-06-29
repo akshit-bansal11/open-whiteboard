@@ -31,7 +31,7 @@ export function getOrCreateLocalUser(): Pick<
       color: COLORS[0],
     }
   }
-  const stored = localStorage.getItem("coform-user")
+  const stored = localStorage.getItem("open-whiteboard-user")
   if (stored) {
     try {
       return JSON.parse(stored) as Pick<
@@ -47,6 +47,6 @@ export function getOrCreateLocalUser(): Pick<
     name: randomName(),
     color: randomColor(),
   }
-  localStorage.setItem("coform-user", JSON.stringify(user))
+  localStorage.setItem("open-whiteboard-user", JSON.stringify(user))
   return user
 }

@@ -1,6 +1,6 @@
 "use client"
 
-const LOCAL_ROOMS_KEY = "coform_recent_rooms"
+const LOCAL_ROOMS_KEY = "open-whiteboard_recent_rooms"
 
 export type RecentRoom = {
   id: string
