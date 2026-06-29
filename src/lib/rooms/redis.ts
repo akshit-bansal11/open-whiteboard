@@ -1,36 +1,60 @@
+import { Redis } from "@upstash/redis"
 import type { RoomConfig, RoomStore } from "./types"
 
 /**
- * Mock Redis store for now.
- * In a real application, you would use a package like ioredis or @upstash/redis.
+ * Redis store using @upstash/redis (HTTP-based, perfect for Serverless/Edge)
  */
 class RedisStore implements RoomStore {
-  private rooms: Map<string, RoomConfig> = new Map()
+  private redis: Redis | null = null
 
   async connect(): Promise<void> {
-    console.log("Connecting to Redis (Mocked)...")
+    if (!this.redis) {
+      this.redis = Redis.fromEnv()
+    }
   }
 
   async createRoom(id: string, passwordHash?: string): Promise<RoomConfig> {
+    await this.connect()
+    
     const config: RoomConfig = {
       id,
       passwordHash,
       createdAt: Date.now(),
     }
-    this.rooms.set(id, config)
+    
+    // Store in redis as JSON string. Prefix key with 'room:'
+    // biome-ignore lint/style/noNonNullAssertion: initialized in connect
+    await this.redis!.set(`room:${id}`, JSON.stringify(config))
     return config
   }
 
   async getRoom(id: string): Promise<RoomConfig | null> {
-    return this.rooms.get(id) ?? null
+    await this.connect()
+      
+    // biome-ignore lint/style/noNonNullAssertion: initialized in connect
+    const data = await this.redis!.get(`room:${id}`)
+    
+    if (!data) return null
+    
+    if (typeof data === "string") {
+      try {
+        return JSON.parse(data) as RoomConfig
+      } catch {
+        return null
+      }
+    }
+    
+    return data as RoomConfig
   }
 
   async deleteRoom(id: string): Promise<void> {
-    this.rooms.delete(id)
+    await this.connect()
+    // biome-ignore lint/style/noNonNullAssertion: initialized in connect
+    await this.redis!.del(`room:${id}`)
   }
 
   async disconnect(): Promise<void> {
-    console.log("Disconnecting from Redis (Mocked)...")
+    // Upstash uses REST (HTTP), no persistent connection to close
   }
 }
 
