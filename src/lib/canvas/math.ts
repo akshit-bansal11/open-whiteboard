@@ -338,8 +338,22 @@ export function getResizeHandle(
   point: Point,
   bbox: BoundingBox,
   camera: Camera
-): ResizeHandle | null {
+): ResizeHandle | "rotate" | null {
   const hitRadius = HANDLE_SIZE / 2
+
+  // Check rotate handle first (positioned 30 world units above the 'n' handle)
+  const nHandleWorld = { x: bbox.x + bbox.width / 2, y: bbox.y }
+  const rotateWorld = {
+    x: nHandleWorld.x,
+    y: nHandleWorld.y - 30 / camera.zoom,
+  }
+  const rotateScreen = worldToScreen(rotateWorld, camera)
+  if (
+    Math.abs(point.x - rotateScreen.x) <= hitRadius &&
+    Math.abs(point.y - rotateScreen.y) <= hitRadius
+  ) {
+    return "rotate"
+  }
 
   for (const handle of Object.keys(HANDLE_POSITIONS) as ResizeHandle[]) {
     const screenPos = getHandleScreenPos(handle, bbox, camera)
@@ -374,8 +388,13 @@ export function applyResize(
   handle: ResizeHandle,
   delta: Point,
   aspectLock: boolean
-): Pick<Shape, "x" | "y" | "width" | "height"> {
-  let { x, y, width, height } = shape
+): Partial<Shape> {
+  const bbox = getShapeBoundingBox(shape)
+  let { x, y, width, height } = bbox
+  const oldX = x,
+    oldY = y,
+    oldW = width,
+    oldH = height
   const aspect = width !== 0 ? width / height : 1
 
   // Apply the delta to the relevant edges based on which handle is active
@@ -420,6 +439,35 @@ export function applyResize(
       y = y + height - MIN_SHAPE_SIZE
     }
     height = MIN_SHAPE_SIZE
+  }
+
+  const scaleX = oldW === 0 ? 1 : width / oldW
+  const scaleY = oldH === 0 ? 1 : height / oldH
+
+  if (shape.type === "arrow" || shape.type === "line") {
+    return {
+      x,
+      y,
+      width,
+      height,
+      startX: x + (shape.startX - oldX) * scaleX,
+      startY: y + (shape.startY - oldY) * scaleY,
+      endX: x + (shape.endX - oldX) * scaleX,
+      endY: y + (shape.endY - oldY) * scaleY,
+    }
+  }
+
+  if (shape.type === "pen") {
+    return {
+      x,
+      y,
+      width,
+      height,
+      points: shape.points.map((p) => ({
+        x: x + (p.x - oldX) * scaleX,
+        y: y + (p.y - oldY) * scaleY,
+      })),
+    }
   }
 
   return { x, y, width, height }

@@ -88,7 +88,7 @@ export function ToolBar({
           e.target.value = "" // reset
         }}
       />
-      {TOOLS.map((def, i) => {
+      {TOOLS.map((def) => {
         if (def.divider) {
           return <div key={def.id} className="my-1 h-px w-full bg-zinc-800" />
         }

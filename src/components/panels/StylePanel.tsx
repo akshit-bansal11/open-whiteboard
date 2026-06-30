@@ -1,7 +1,10 @@
 "use client"
 import { AnimatePresence, motion } from "framer-motion"
+import { FlipHorizontal, FlipVertical, Link, Unlink } from "lucide-react"
+import { useState } from "react"
+import { getShapeBoundingBox } from "@/lib/canvas/math"
 import { useUIStore } from "@/stores/ui-store"
-import type { ArrowShape, Shape, TextShape } from "@/types/canvas"
+import type { ArrowShape, BoundingBox, Shape, TextShape } from "@/types/canvas"
 import { ColorSwatch } from "./ColorSwatch"
 
 type StylePanelProps = {
@@ -11,6 +14,8 @@ type StylePanelProps = {
 
 export function StylePanel({ shapes, batchSetShapes }: StylePanelProps) {
   const { selectedIds } = useUIStore()
+  const [opacityLinked, setOpacityLinked] = useState(true)
+  const [sizeLinked, setSizeLinked] = useState(false)
 
   // For simplicity, we show properties of the FIRST selected shape,
   // but apply changes to ALL selected shapes.
@@ -23,6 +28,79 @@ export function StylePanel({ shapes, batchSetShapes }: StylePanelProps) {
       [prop]: val,
       updatedAt: Date.now(),
     }))
+    batchSetShapes(updated as Shape[])
+  }
+
+  const updateProps = (props: Partial<Shape>) => {
+    const updated = activeShapes.map((s) => ({
+      ...s,
+      ...props,
+      updatedAt: Date.now(),
+    }))
+    batchSetShapes(updated as Shape[])
+  }
+
+  const updateOpacity = (
+    prop: "shapeOpacity" | "strokeOpacity",
+    value: number
+  ) => {
+    const props = opacityLinked
+      ? { shapeOpacity: value, strokeOpacity: value, opacity: value }
+      : { [prop]: value }
+    updateProps(props as Partial<Shape>)
+  }
+
+  const updateBox = (nextBox: Partial<BoundingBox>) => {
+    const updated = activeShapes.map((shape) => {
+      const current = getShapeBoundingBox(shape)
+      const target = {
+        ...current,
+        ...nextBox,
+      }
+      return {
+        ...applyBoxTransform(shape, current, target),
+        updatedAt: Date.now(),
+      }
+    })
+    batchSetShapes(updated as Shape[])
+  }
+
+  const updateSize = (axis: "width" | "height", value: number) => {
+    if (!first) return
+    const bbox = getShapeBoundingBox(first)
+    if (!sizeLinked || bbox.width === 0 || bbox.height === 0) {
+      updateBox({ [axis]: value })
+      return
+    }
+
+    const ratio = bbox.width / bbox.height
+    updateBox(
+      axis === "width"
+        ? { width: value, height: value / ratio }
+        : { height: value, width: value * ratio }
+    )
+  }
+
+  const transposeSelection = () => {
+    if (!first) return
+    const bbox = getShapeBoundingBox(first)
+    updateBox({
+      x: bbox.x + (bbox.width - bbox.height) / 2,
+      y: bbox.y + (bbox.height - bbox.width) / 2,
+      width: bbox.height,
+      height: bbox.width,
+    })
+  }
+
+  const toggleFlip = (axis: "x" | "y") => {
+    const updated = activeShapes.map((shape) => {
+      return {
+        ...shape,
+        flipX: axis === "x" ? !shape.flipX : shape.flipX,
+        flipY: axis === "y" ? !shape.flipY : shape.flipY,
+        updatedAt: Date.now(),
+      }
+    })
     batchSetShapes(updated as Shape[])
   }
 
@@ -55,6 +133,9 @@ export function StylePanel({ shapes, batchSetShapes }: StylePanelProps) {
 
   const isText = first?.type === "text"
   const isArrow = first?.type === "arrow"
+  const firstBox = first ? getShapeBoundingBox(first) : null
+  const shapeOpacity = first?.shapeOpacity ?? first?.opacity ?? 1
+  const strokeOpacity = first?.strokeOpacity ?? first?.opacity ?? 1
 
   return (
     <div className="absolute right-4 top-1/2 -translate-y-1/2 z-20 flex flex-col items-end">
@@ -66,16 +147,16 @@ export function StylePanel({ shapes, batchSetShapes }: StylePanelProps) {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 16 }}
             transition={{ duration: 0.15 }}
-            className="w-64 bg-zinc-950/80 backdrop-blur-xl border border-zinc-800 rounded-2xl shadow-2xl p-4 flex flex-col gap-5 text-white"
+            className="w-96 max-h-[calc(100vh-2rem)] overflow-hidden bg-zinc-950 border border-zinc-800 rounded-2xl shadow-2xl flex flex-col text-white"
           >
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+            <div className="flex items-center justify-between border-b border-zinc-800 p-4 pb-3">
               <h3 className="text-sm font-semibold">Style</h3>
               <span className="text-xs text-zinc-500 font-medium">
                 {selectedIds.size} selected
               </span>
             </div>
 
-            <div className="flex flex-col gap-4">
+            <div className="style-panel-scrollbar flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
               {/* Stroke */}
               <ColorSwatch
                 label="Stroke"
@@ -94,24 +175,123 @@ export function StylePanel({ shapes, batchSetShapes }: StylePanelProps) {
                   />
                 )}
 
-              {/* Opacity */}
-              <div className="flex flex-col gap-1.5">
-                <div className="flex justify-between items-center text-xs text-zinc-400 font-medium">
-                  <span>Opacity</span>
-                  <span>{Math.round(first.opacity * 100)}%</span>
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-zinc-400 font-medium">
+                    Opacity
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setOpacityLinked((v) => !v)}
+                    className="h-7 w-7 rounded-md border border-zinc-700 bg-zinc-900 text-zinc-300 hover:text-white"
+                    title={opacityLinked ? "Unlink opacity" : "Link opacity"}
+                  >
+                    {opacityLinked ? (
+                      <Link className="m-auto h-3.5 w-3.5" />
+                    ) : (
+                      <Unlink className="m-auto h-3.5 w-3.5" />
+                    )}
+                  </button>
                 </div>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={first.opacity}
-                  onChange={(e) =>
-                    updateProp("opacity", Number(e.target.value))
-                  }
-                  className="w-full accent-blue-500"
+                <RangeRow
+                  label="Shape"
+                  value={shapeOpacity}
+                  onChange={(value) => updateOpacity("shapeOpacity", value)}
+                />
+                <RangeRow
+                  label="Stroke"
+                  value={strokeOpacity}
+                  onChange={(value) => updateOpacity("strokeOpacity", value)}
                 />
               </div>
+
+              {firstBox && (
+                <div className="flex flex-col gap-2 border-t border-zinc-800 pt-4">
+                  <span className="text-xs text-zinc-400 font-medium">
+                    Transform
+                  </span>
+                  <div className="grid grid-cols-2 gap-2">
+                    <NumberField
+                      label="X"
+                      value={firstBox.x}
+                      onChange={(value) => updateBox({ x: value })}
+                    />
+                    <NumberField
+                      label="Y"
+                      value={firstBox.y}
+                      onChange={(value) => updateBox({ y: value })}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-zinc-400 font-medium">
+                      Size
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSizeLinked((v) => !v)}
+                      className="h-7 w-7 rounded-md border border-zinc-700 bg-zinc-900 text-zinc-300 hover:text-white"
+                      title={sizeLinked ? "Unlink size" : "Link size"}
+                    >
+                      {sizeLinked ? (
+                        <Link className="m-auto h-3.5 w-3.5" />
+                      ) : (
+                        <Unlink className="m-auto h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <NumberField
+                      label="W"
+                      value={firstBox.width}
+                      min={1}
+                      onChange={(value) => updateSize("width", value)}
+                    />
+                    <NumberField
+                      label="H"
+                      value={firstBox.height}
+                      min={1}
+                      onChange={(value) => updateSize("height", value)}
+                    />
+                  </div>
+                  <NumberField
+                    label="Rotate"
+                    value={radiansToDegrees(first.rotation)}
+                    onChange={(value) =>
+                      updateProp("rotation", degreesToRadians(value))
+                    }
+                  />
+                  <div className="grid grid-cols-3 gap-2">
+                    <IconButton label="Flip H" onClick={() => toggleFlip("x")}>
+                      <FlipHorizontal className="h-3.5 w-3.5" />
+                    </IconButton>
+                    <IconButton label="Flip V" onClick={() => toggleFlip("y")}>
+                      <FlipVertical className="h-3.5 w-3.5" />
+                    </IconButton>
+                    <button
+                      type="button"
+                      onClick={transposeSelection}
+                      className="h-8 rounded-md border border-zinc-700 bg-zinc-900 px-2 text-xs text-zinc-300 hover:text-white"
+                      title="Transpose width and height"
+                    >
+                      Transpose
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <IconButton
+                      label="Mirror H"
+                      onClick={() => toggleFlip("x")}
+                    >
+                      <FlipHorizontal className="h-3.5 w-3.5" />
+                    </IconButton>
+                    <IconButton
+                      label="Mirror V"
+                      onClick={() => toggleFlip("y")}
+                    >
+                      <FlipVertical className="h-3.5 w-3.5" />
+                    </IconButton>
+                  </div>
+                </div>
+              )}
 
               {/* Stroke Width */}
               <div className="flex flex-col gap-1.5">
@@ -154,7 +334,7 @@ export function StylePanel({ shapes, batchSetShapes }: StylePanelProps) {
                 >
                   <option value="solid">Solid</option>
                   <option value="10,10">Dashed</option>
-                  <option value="2,6">Dotted</option>
+                  <option value="0,6">Dotted</option>
                 </select>
               </div>
 
@@ -259,4 +439,148 @@ export function StylePanel({ shapes, batchSetShapes }: StylePanelProps) {
       </AnimatePresence>
     </div>
   )
+}
+
+function RangeRow({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: number
+  onChange: (value: number) => void
+}) {
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex justify-between items-center text-xs text-zinc-400">
+        <span>{label}</span>
+        <span>{Math.round(value * 100)}%</span>
+      </div>
+      <input
+        type="range"
+        min="0"
+        max="1"
+        step="0.05"
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full accent-blue-500"
+      />
+    </div>
+  )
+}
+
+function NumberField({
+  label,
+  value,
+  min,
+  onChange,
+}: {
+  label: string
+  value: number
+  min?: number
+  onChange: (value: number) => void
+}) {
+  return (
+    <label className="flex flex-col gap-1 text-xs text-zinc-400">
+      {label}
+      <input
+        type="number"
+        min={min}
+        step="1"
+        value={Number.isFinite(value) ? Math.round(value * 100) / 100 : 0}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="h-8 rounded-md border border-zinc-700 bg-zinc-900 px-2 text-sm text-white focus:border-blue-500 focus:outline-none"
+      />
+    </label>
+  )
+}
+
+function IconButton({
+  label,
+  children,
+  onClick,
+}: {
+  label: string
+  children: React.ReactNode
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex h-8 items-center justify-center gap-1 rounded-md border border-zinc-700 bg-zinc-900 px-2 text-xs text-zinc-300 hover:text-white"
+      title={label}
+    >
+      {children}
+      <span>{label}</span>
+    </button>
+  )
+}
+
+function applyBoxTransform(
+  shape: Shape,
+  current: BoundingBox,
+  target: BoundingBox
+): Shape {
+  if (shape.type === "arrow" || shape.type === "line") {
+    const start = mapPointToBox(
+      { x: shape.startX, y: shape.startY },
+      current,
+      target
+    )
+    const end = mapPointToBox({ x: shape.endX, y: shape.endY }, current, target)
+    return {
+      ...shape,
+      x: target.x,
+      y: target.y,
+      width: target.width,
+      height: target.height,
+      startX: start.x,
+      startY: start.y,
+      endX: end.x,
+      endY: end.y,
+    } as Shape
+  }
+
+  if (shape.type === "pen") {
+    return {
+      ...shape,
+      x: target.x,
+      y: target.y,
+      width: target.width,
+      height: target.height,
+      points: shape.points.map((point) =>
+        mapPointToBox(point, current, target)
+      ),
+    }
+  }
+
+  return {
+    ...shape,
+    x: target.x,
+    y: target.y,
+    width: target.width,
+    height: target.height,
+  }
+}
+
+function mapPointToBox(
+  point: { x: number; y: number },
+  current: BoundingBox,
+  target: BoundingBox
+): { x: number; y: number } {
+  const rx = current.width === 0 ? 0.5 : (point.x - current.x) / current.width
+  const ry = current.height === 0 ? 0.5 : (point.y - current.y) / current.height
+  return {
+    x: target.x + target.width * rx,
+    y: target.y + target.height * ry,
+  }
+}
+
+function radiansToDegrees(value: number) {
+  return Math.round((value * 180) / Math.PI)
+}
+
+function degreesToRadians(value: number) {
+  return (value * Math.PI) / 180
 }

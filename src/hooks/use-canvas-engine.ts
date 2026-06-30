@@ -9,6 +9,7 @@ import {
 } from "@/constants/canvas"
 import {
   applyResize,
+  applyRotation,
   clamp,
   getDistanceBetweenPoints,
   getResizeHandle,
@@ -42,6 +43,10 @@ const BASE_V12 = {
   cornerRadius: 0,
   dashArray: [] as number[],
   fillStyle: "solid" as const,
+  shapeOpacity: 1,
+  strokeOpacity: 1,
+  flipX: false,
+  flipY: false,
 }
 
 export function useCanvasEngine({
@@ -130,21 +135,31 @@ export function useCanvasEngine({
       }
 
       if (activeTool === "select") {
+        const screenPt = getPointerScreen(e)
         // Check resize handles on selected shapes
         const selShapes = shapes.filter((s) => selectedIds.has(s.id))
         if (selShapes.length === 1) {
           const first = selShapes[0]
           if (first) {
             const bbox = getShapeBoundingBox(first)
-            const handle = getResizeHandle(worldPt, bbox, camera)
+            const handle = getResizeHandle(screenPt, bbox, camera)
             if (handle) {
-              setInteractionState({
-                mode: "resizing",
-                shapeId: first.id,
-                handle,
-                startShape: first,
-                startPointer: worldPt,
-              })
+              if (handle === "rotate") {
+                setInteractionState({
+                  mode: "rotating",
+                  shapeId: first.id,
+                  startShape: first,
+                  startPointer: worldPt,
+                })
+              } else {
+                setInteractionState({
+                  mode: "resizing",
+                  shapeId: first.id,
+                  handle,
+                  startShape: first,
+                  startPointer: worldPt,
+                })
+              }
               return
             }
           }
@@ -288,6 +303,7 @@ export function useCanvasEngine({
       setShape,
       deleteShapes,
       getPointerWorld,
+      getPointerScreen,
       currentUserId,
       setInteractionState,
     ]
@@ -300,6 +316,44 @@ export function useCanvasEngine({
 
       const state = interactionRef.current
       const worldPt = getPointerWorld(e)
+      const canvas = e.currentTarget
+
+      if (state.mode === "idle") {
+        let cursor = "default"
+        if (activeTool === "pan") {
+          cursor = "grab"
+        } else if (activeTool === "select") {
+          const selShapes = shapes.filter((s) => selectedIds.has(s.id))
+          let hitHandle = false
+          if (selShapes.length === 1 && selShapes[0]) {
+            const bbox = getShapeBoundingBox(selShapes[0])
+            const handle = getResizeHandle(screenPt, bbox, camera)
+            if (handle) {
+              cursor = handle === "rotate" ? "alias" : `${handle}-resize`
+              hitHandle = true
+            }
+          }
+          if (!hitHandle) {
+            const hit = [...shapes]
+              .reverse()
+              .find((s) => !s.locked && hitTestShape(worldPt, s))
+            if (hit && selectedIds.has(hit.id)) {
+              cursor = "move"
+            }
+          }
+        } else if (activeTool !== "eraser") {
+          cursor = "crosshair"
+        }
+        canvas.style.cursor = cursor
+      } else if (state.mode === "rotating") {
+        canvas.style.cursor = "alias"
+      } else if (state.mode === "resizing") {
+        canvas.style.cursor = `${state.handle}-resize`
+      } else if (state.mode === "moving") {
+        canvas.style.cursor = "move"
+      } else if (state.mode === "panning") {
+        canvas.style.cursor = "grabbing"
+      }
 
       if (state.mode === "panning") {
         const dx = e.clientX - state.startPointer.x
@@ -385,6 +439,27 @@ export function useCanvasEngine({
         batchSetShapes(moved as Shape[])
       } else if (state.mode === "selecting") {
         setInteractionState({ ...state, currentWorld: worldPt })
+      } else if (state.mode === "rotating") {
+        const targetShape = shapes.find((s) => s.id === state.shapeId)
+        if (targetShape) {
+          const bbox = getShapeBoundingBox(state.startShape)
+          const cx = bbox.x + bbox.width / 2
+          const cy = bbox.y + bbox.height / 2
+
+          const startAngle = Math.atan2(
+            state.startPointer.y - cy,
+            state.startPointer.x - cx
+          )
+          const currentAngle = Math.atan2(worldPt.y - cy, worldPt.x - cx)
+          const delta = currentAngle - startAngle
+
+          const { rotation } = applyRotation(
+            state.startShape,
+            { x: cx, y: cy },
+            delta
+          )
+          setShape({ ...targetShape, rotation, updatedAt: Date.now() })
+        }
       } else if (state.mode === "resizing") {
         const targetShape = shapes.find((s) => s.id === state.shapeId)
         if (targetShape) {
@@ -393,11 +468,14 @@ export function useCanvasEngine({
             y: worldPt.y - state.startPointer.y,
           }
           const dims = applyResize(state.startShape, state.handle, delta, false)
-          setShape({ ...targetShape, ...dims, updatedAt: Date.now() })
+          setShape({ ...targetShape, ...dims, updatedAt: Date.now() } as Shape)
         }
       }
     },
     [
+      activeTool,
+      camera,
+      selectedIds,
       getPointerWorld,
       getPointerScreen,
       setLocalCursor,

@@ -15,13 +15,13 @@ class RedisStore implements RoomStore {
 
   async createRoom(id: string, passwordHash?: string): Promise<RoomConfig> {
     await this.connect()
-    
+
     const config: RoomConfig = {
       id,
       passwordHash,
       createdAt: Date.now(),
     }
-    
+
     // Store in redis as JSON string. Prefix key with 'room:'
     // biome-ignore lint/style/noNonNullAssertion: initialized in connect
     await this.redis!.set(`room:${id}`, JSON.stringify(config))
@@ -30,12 +30,12 @@ class RedisStore implements RoomStore {
 
   async getRoom(id: string): Promise<RoomConfig | null> {
     await this.connect()
-      
+
     // biome-ignore lint/style/noNonNullAssertion: initialized in connect
     const data = await this.redis!.get(`room:${id}`)
-    
+
     if (!data) return null
-    
+
     if (typeof data === "string") {
       try {
         return JSON.parse(data) as RoomConfig
@@ -43,7 +43,7 @@ class RedisStore implements RoomStore {
         return null
       }
     }
-    
+
     return data as RoomConfig
   }
 

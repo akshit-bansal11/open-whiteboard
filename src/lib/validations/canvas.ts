@@ -30,12 +30,16 @@ const BaseShapeSchema = z.object({
   stroke: z.string().min(1),
   strokeWidth: z.number().nonnegative().finite(),
   opacity: z.number().min(0).max(1),
+  shapeOpacity: z.number().min(0).max(1).default(1),
+  strokeOpacity: z.number().min(0).max(1).default(1),
   locked: z.boolean(),
   createdBy: z.string().min(1),
   updatedAt: z.number().int().nonnegative(),
   cornerRadius: z.number().min(0).default(0),
   dashArray: z.array(z.number()).default([]),
   fillStyle: z.enum(["solid", "hachure", "none"]).default("solid"),
+  flipX: z.boolean().default(false),
+  flipY: z.boolean().default(false),
 })
 
 // ---------------------------------------------------------------------------

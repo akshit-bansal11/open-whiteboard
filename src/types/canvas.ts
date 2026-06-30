@@ -64,12 +64,16 @@ export type BaseShape = {
   stroke: string
   strokeWidth: number
   opacity: number
+  shapeOpacity: number
+  strokeOpacity: number
   locked: boolean
   readonly createdBy: string
   updatedAt: number
   cornerRadius: number
   dashArray: number[]
   fillStyle: "solid" | "hachure" | "none"
+  flipX: boolean
+  flipY: boolean
 }
 
 export type RectShape = BaseShape & { type: "rect" }
@@ -172,6 +176,12 @@ export type InteractionState =
       mode: "resizing"
       shapeId: ShapeId
       handle: ResizeHandle
+      startShape: Shape
+      startPointer: Point
+    }
+  | {
+      mode: "rotating"
+      shapeId: ShapeId
       startShape: Shape
       startPointer: Point
     }

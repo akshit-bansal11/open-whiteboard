@@ -1,5 +1,5 @@
 "use client"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 const COLORS = [
   "transparent",
@@ -62,6 +62,10 @@ export function ColorSwatch({ value, onChange, label }: ColorSwatchProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [hexInput, setHexInput] = useState(value)
 
+  useEffect(() => {
+    setHexInput(value)
+  }, [value])
+
   return (
     <div className="flex flex-col gap-1 relative">
       <span className="text-xs text-zinc-400 font-medium">{label}</span>
@@ -69,7 +73,7 @@ export function ColorSwatch({ value, onChange, label }: ColorSwatchProps) {
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className="w-8 h-8 rounded-full border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm overflow-hidden"
+          className="block h-8 min-h-8 w-8 min-w-8 shrink-0 rounded-lg border border-zinc-700 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm overflow-hidden"
           style={{
             backgroundColor: value === "transparent" ? "#1a1a2e" : value,
           }} // 1a1a2e is the app background
@@ -122,7 +126,7 @@ export function ColorSwatch({ value, onChange, label }: ColorSwatchProps) {
                   setHexInput(c)
                   setIsOpen(false)
                 }}
-                className={`w-6 h-6 rounded border transition-transform hover:scale-110 ${
+                className={`block h-6 min-h-6 w-6 min-w-6 shrink-0 rounded-md border transition-transform hover:scale-110 ${
                   value === c ? "border-blue-500 scale-110" : "border-zinc-700"
                 }`}
                 style={{

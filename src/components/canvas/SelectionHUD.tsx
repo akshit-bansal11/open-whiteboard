@@ -58,12 +58,33 @@ export function SelectionHUD({ shapes }: SelectionHUDProps) {
             style={{
               left: screenPos.x - 5,
               top: screenPos.y - 5,
-              pointerEvents: "auto",
-              cursor: `${handle}-resize`,
+              pointerEvents: "none",
             }}
           />
         )
       })}
+      {selected.length === 1 && (
+        <>
+          <div
+            className="absolute bg-blue-500/50"
+            style={{
+              left: (bbox.x + bbox.width / 2) * camera.zoom + camera.x,
+              top: (bbox.y - 30 / camera.zoom) * camera.zoom + camera.y + 5,
+              width: 1,
+              height: 25,
+              pointerEvents: "none",
+            }}
+          />
+          <div
+            className="absolute w-3 h-3 bg-white border border-blue-500 rounded-full shadow-sm"
+            style={{
+              left: (bbox.x + bbox.width / 2) * camera.zoom + camera.x - 6,
+              top: (bbox.y - 30 / camera.zoom) * camera.zoom + camera.y - 6,
+              pointerEvents: "none",
+            }}
+          />
+        </>
+      )}
     </div>
   )
 }

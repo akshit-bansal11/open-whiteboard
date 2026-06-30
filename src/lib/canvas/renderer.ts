@@ -11,6 +11,7 @@ import type {
   TriangleShape,
 } from "@/types/canvas"
 import type { AwarenessState } from "@/types/user"
+import { getShapeBoundingBox } from "./math"
 
 type RenderParams = {
   ctx: CanvasRenderingContext2D
@@ -72,13 +73,16 @@ export function renderFrame({
 
   for (const shape of sorted) {
     ctx.save()
-    ctx.globalAlpha = shape.opacity
 
-    if (shape.rotation !== 0) {
-      const cx = shape.x + shape.width / 2
-      const cy = shape.y + shape.height / 2
+    const transformBox = getShapeBoundingBox(shape)
+    const shouldTransform =
+      shape.rotation !== 0 || shape.flipX === true || shape.flipY === true
+    if (shouldTransform) {
+      const cx = transformBox.x + transformBox.width / 2
+      const cy = transformBox.y + transformBox.height / 2
       ctx.translate(cx, cy)
-      ctx.rotate(shape.rotation)
+      if (shape.rotation !== 0) ctx.rotate(shape.rotation)
+      ctx.scale(shape.flipX ? -1 : 1, shape.flipY ? -1 : 1)
       ctx.translate(-cx, -cy)
     }
 
@@ -101,6 +105,7 @@ export function renderFrame({
               : shape.textAlign === "right"
                 ? shape.x + shape.width
                 : shape.x
+          ctx.globalAlpha = getShapeOpacity(shape)
           ctx.fillText(shape.content, tx, shape.y, shape.width)
         }
         break
@@ -111,6 +116,7 @@ export function renderFrame({
           ctx.lineCap = "round"
           ctx.lineJoin = "round"
           if (shape.dashArray.length) ctx.setLineDash(shape.dashArray)
+          ctx.globalAlpha = getStrokeOpacity(shape)
           const path = new Path2D()
           const first = shape.points[0]
           if (first) {
@@ -293,12 +299,13 @@ function renderStar(ctx: CanvasRenderingContext2D, shape: StarShape) {
 
 function renderArrow(ctx: CanvasRenderingContext2D, shape: ArrowShape) {
   const { startX, startY, endX, endY } = shape
-  if (shape.dashArray.length) ctx.setLineDash(shape.dashArray)
+  applyStrokeDash(ctx, shape)
   ctx.beginPath()
   ctx.moveTo(startX, startY)
   ctx.lineTo(endX, endY)
   ctx.strokeStyle = shape.stroke
   ctx.lineWidth = shape.strokeWidth
+  ctx.globalAlpha = getStrokeOpacity(shape)
   ctx.stroke()
   ctx.setLineDash([])
 
@@ -333,16 +340,18 @@ function drawArrowHead(
   )
   ctx.strokeStyle = shape.stroke
   ctx.lineWidth = shape.strokeWidth
+  ctx.globalAlpha = getStrokeOpacity(shape)
   ctx.stroke()
 }
 
 function renderLine(ctx: CanvasRenderingContext2D, shape: LineShape) {
-  if (shape.dashArray.length) ctx.setLineDash(shape.dashArray)
+  applyStrokeDash(ctx, shape)
   ctx.beginPath()
   ctx.moveTo(shape.startX, shape.startY)
   ctx.lineTo(shape.endX, shape.endY)
   ctx.strokeStyle = shape.stroke
   ctx.lineWidth = shape.strokeWidth
+  ctx.globalAlpha = getStrokeOpacity(shape)
   ctx.stroke()
   ctx.setLineDash([])
 }
@@ -355,8 +364,10 @@ function renderImage(ctx: CanvasRenderingContext2D, shape: ImageShape) {
     newImg.onload = () => imageCache.set(shape.id, newImg)
     return // skip this frame — will render next rAF once decoded
   }
-  if (img.complete)
+  if (img.complete) {
+    ctx.globalAlpha = getShapeOpacity(shape)
     ctx.drawImage(img, shape.x, shape.y, shape.width, shape.height)
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -367,17 +378,36 @@ function renderImage(ctx: CanvasRenderingContext2D, shape: ImageShape) {
  * Applies fill and stroke to the current path, reading dashArray and fillStyle.
  */
 function applyFillStroke(ctx: CanvasRenderingContext2D, shape: BaseShape) {
-  if (shape.dashArray.length) ctx.setLineDash(shape.dashArray)
   if (shape.fillStyle !== "none" && shape.fill !== "transparent") {
     ctx.fillStyle = shape.fill
+    ctx.globalAlpha = getShapeOpacity(shape)
     ctx.fill()
   }
   if (shape.strokeWidth > 0) {
+    applyStrokeDash(ctx, shape)
     ctx.strokeStyle = shape.stroke
     ctx.lineWidth = shape.strokeWidth
+    ctx.globalAlpha = getStrokeOpacity(shape)
     ctx.stroke()
   }
   ctx.setLineDash([])
+  ctx.globalAlpha = 1
+}
+
+function getShapeOpacity(shape: BaseShape): number {
+  return shape.shapeOpacity ?? shape.opacity ?? 1
+}
+
+function getStrokeOpacity(shape: BaseShape): number {
+  return shape.strokeOpacity ?? shape.opacity ?? 1
+}
+
+function applyStrokeDash(ctx: CanvasRenderingContext2D, shape: BaseShape) {
+  if (shape.dashArray.length === 0) return
+  if (shape.dashArray[0] === 0) {
+    ctx.lineCap = "round"
+  }
+  ctx.setLineDash(shape.dashArray)
 }
 
 /**
