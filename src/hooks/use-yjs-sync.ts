@@ -1,6 +1,6 @@
 "use client"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { IndexeddbPersistence } from "y-indexeddb"
+import { clearDocument, IndexeddbPersistence } from "y-indexeddb"
 import * as Y from "yjs"
 import { createProvider, type ProviderStatus } from "@/lib/yjs/provider"
 import { createYDoc, isShape } from "@/lib/yjs/ydoc"
@@ -8,7 +8,7 @@ import type { Shape, ShapeId } from "@/types/canvas"
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:1234"
 
-export function useYjsSync(roomId: string) {
+export function useYjsSync(roomId: string, enablePersistence: boolean = false) {
   const [shapes, setShapes] = useState<Shape[]>([])
   const [connectionStatus, setConnectionStatus] =
     useState<ProviderStatus>("connecting")
@@ -25,14 +25,6 @@ export function useYjsSync(roomId: string) {
       setConnectionStatus
     )
 
-    // Local persistence via IndexedDB
-    const indexeddbProvider = new IndexeddbPersistence(roomId, doc)
-
-    // Optional: when data is loaded from local DB, you might want to force a re-render
-    indexeddbProvider.on("synced", () => {
-      setShapes(Array.from(yShapes.values()).filter(isShape))
-    })
-
     docRef.current = { doc, shapes: yShapes, meta }
     providerRef.current = { provider, undoManager }
 
@@ -46,10 +38,28 @@ export function useYjsSync(roomId: string) {
     return () => {
       yShapes.unobserve(handleObserve)
       provider.destroy()
-      indexeddbProvider.destroy()
       doc.destroy()
     }
   }, [roomId])
+
+  useEffect(() => {
+    if (!enablePersistence) return
+    const doc = docRef.current?.doc
+    const yShapes = docRef.current?.shapes
+    if (!doc || !yShapes) return
+
+    // Local persistence via IndexedDB
+    const indexeddbProvider = new IndexeddbPersistence(roomId, doc)
+
+    // Optional: when data is loaded from local DB, you might want to force a re-render
+    indexeddbProvider.on("synced", () => {
+      setShapes(Array.from(yShapes.values()).filter(isShape))
+    })
+
+    return () => {
+      indexeddbProvider.destroy()
+    }
+  }, [roomId, enablePersistence])
 
   const setShape = useCallback((shape: Shape) => {
     const d = docRef.current
@@ -94,4 +104,8 @@ export function useYjsSync(roomId: string) {
     deleteShapes,
     connectionStatus,
   }
+}
+
+export function clearRoomData(roomId: string) {
+  clearDocument(roomId).catch(() => {})
 }
