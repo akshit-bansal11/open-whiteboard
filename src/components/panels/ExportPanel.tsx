@@ -20,7 +20,7 @@ export function ExportPanel({ shapes }: ExportPanelProps) {
     setLoading(true)
     try {
       await exportCanvas(shapes, format, background)
-      if (format === "png") {
+      if (format === "png" || format === "svg") {
         setExportPanelOpen(false)
       }
     } catch (_err) {
@@ -123,7 +123,7 @@ export function ExportPanel({ shapes }: ExportPanelProps) {
                   <div className="text-left">
                     <div className="font-medium text-white">SVG Vector</div>
                     <div className="text-xs text-zinc-500">
-                      Scalable graphics (Soon)
+                      Scalable graphics
                     </div>
                   </div>
                 </div>

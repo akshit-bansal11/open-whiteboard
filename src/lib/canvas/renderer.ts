@@ -20,6 +20,7 @@ type RenderParams = {
   selection: string[]
   cursors: AwarenessState[]
   selectionBox: { x: number; y: number; width: number; height: number } | null
+  isExport?: boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -38,6 +39,7 @@ export function renderFrame({
   selection,
   cursors,
   selectionBox,
+  isExport = false,
 }: RenderParams): void {
   const { zoom } = camera
   const canvas = ctx.canvas
@@ -47,7 +49,7 @@ export function renderFrame({
   ctx.setTransform(zoom, 0, 0, zoom, camera.x, camera.y)
 
   // Grid — only draw when zoomed in enough
-  if (zoom > 0.3) {
+  if (zoom > 0.3 && !isExport) {
     ctx.strokeStyle = "rgba(255,255,255,0.05)"
     ctx.lineWidth = 1 / zoom
     const startX = Math.floor(-camera.x / zoom / GRID_SIZE) * GRID_SIZE
@@ -161,7 +163,7 @@ export function renderFrame({
     }
 
     // Selection outline
-    if (selection.includes(shape.id)) {
+    if (!isExport && selection.includes(shape.id)) {
       ctx.setLineDash([])
       const bbox = getShapeRenderBbox(shape)
       ctx.strokeStyle = "#3b82f6"
@@ -180,7 +182,7 @@ export function renderFrame({
   }
 
   // Rubber-band selection box
-  if (selectionBox) {
+  if (!isExport && selectionBox) {
     ctx.strokeStyle = "#3b82f6"
     ctx.fillStyle = "rgba(59,130,246,0.08)"
     ctx.lineWidth = 1 / zoom
@@ -201,19 +203,21 @@ export function renderFrame({
   ctx.restore()
 
   // Remote cursors — screen space
-  for (const cursor of cursors) {
-    if (!cursor.cursor) continue
-    const sx = cursor.cursor.x * zoom + camera.x
-    const sy = cursor.cursor.y * zoom + camera.y
-    ctx.save()
-    ctx.fillStyle = cursor.color
-    ctx.beginPath()
-    ctx.arc(sx, sy, 6, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.font = "12px sans-serif"
-    ctx.fillStyle = cursor.color
-    ctx.fillText(cursor.name, sx + 10, sy + 4)
-    ctx.restore()
+  if (!isExport) {
+    for (const cursor of cursors) {
+      if (!cursor.cursor) continue
+      const sx = cursor.cursor.x * zoom + camera.x
+      const sy = cursor.cursor.y * zoom + camera.y
+      ctx.save()
+      ctx.fillStyle = cursor.color
+      ctx.beginPath()
+      ctx.arc(sx, sy, 6, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.font = "12px sans-serif"
+      ctx.fillStyle = cursor.color
+      ctx.fillText(cursor.name, sx + 10, sy + 4)
+      ctx.restore()
+    }
   }
 }
 
