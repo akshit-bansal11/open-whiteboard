@@ -76,6 +76,11 @@ export function useCanvasEngine({
     addToSelection,
     clearSelection,
     setCamera,
+    polygonSides,
+    starPoints,
+    starPolygonPoints,
+    arrowHead,
+    arrowHeadStyle,
   } = useUIStore()
   const [interaction, setInteraction] = useState<InteractionState>({
     mode: "idle",
@@ -231,7 +236,8 @@ export function useCanvasEngine({
             startY: worldPt.y,
             endX: worldPt.x,
             endY: worldPt.y,
-            arrowHead: "end",
+            arrowHead,
+            headStyle: arrowHeadStyle,
           }
           setShape(newShape)
           setInteractionState({
@@ -265,22 +271,30 @@ export function useCanvasEngine({
             ? { ...base, type: "rect" }
             : activeTool === "ellipse"
               ? { ...base, type: "ellipse" }
-              : activeTool === "diamond"
-                ? { ...base, type: "diamond" }
-                : activeTool === "triangle"
-                  ? { ...base, type: "triangle" }
-                  : activeTool === "star"
-                    ? { ...base, type: "star", points: 5 }
-                    : activeTool === "text"
-                      ? {
-                          ...base,
-                          type: "text",
-                          content: "Text",
-                          fontSize: 16,
-                          fontFamily: "sans-serif",
-                          textAlign: "left",
-                        }
-                      : { ...base, type: "pen", points: [worldPt] }
+              : activeTool === "polygon"
+                ? { ...base, type: "polygon", sides: polygonSides }
+                : activeTool === "star"
+                  ? { ...base, type: "star", points: starPoints }
+                  : activeTool === "star-polygon"
+                    ? {
+                        ...base,
+                        type: "star-polygon",
+                        points: starPolygonPoints,
+                      }
+                    : activeTool === "diamond"
+                      ? { ...base, type: "diamond" }
+                      : activeTool === "triangle"
+                        ? { ...base, type: "triangle" }
+                        : activeTool === "text"
+                          ? {
+                              ...base,
+                              type: "text",
+                              content: "Text",
+                              fontSize: 16,
+                              fontFamily: "sans-serif",
+                              textAlign: "left",
+                            }
+                          : { ...base, type: "pen", points: [worldPt] }
 
         setShape(newShape)
         setInteractionState({
@@ -305,6 +319,11 @@ export function useCanvasEngine({
       getPointerScreen,
       currentUserId,
       setInteractionState,
+      polygonSides,
+      starPoints,
+      starPolygonPoints,
+      arrowHead,
+      arrowHeadStyle,
     ]
   )
 

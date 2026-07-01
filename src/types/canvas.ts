@@ -13,7 +13,9 @@ export const TOOLS = [
   "pan",
   "diamond",
   "triangle",
+  "polygon",
   "star",
+  "star-polygon",
   "arrow",
   "line",
   "image",
@@ -97,7 +99,14 @@ export type DiamondShape = BaseShape & { type: "diamond" }
 
 export type TriangleShape = BaseShape & { type: "triangle" }
 
+export type PolygonShape = BaseShape & { type: "polygon"; sides: number }
+
 export type StarShape = BaseShape & { type: "star"; points: number }
+
+export type StarPolygonShape = BaseShape & {
+  type: "star-polygon"
+  points: number
+}
 
 export type ArrowShape = BaseShape & {
   type: "arrow"
@@ -106,6 +115,7 @@ export type ArrowShape = BaseShape & {
   endX: number
   endY: number
   arrowHead: "none" | "start" | "end" | "both"
+  headStyle: "classic" | "triangle" | "stealth" | "diamond"
 }
 
 export type LineShape = BaseShape & {
@@ -130,7 +140,9 @@ export type Shape =
   | PenShape
   | DiamondShape
   | TriangleShape
+  | PolygonShape
   | StarShape
+  | StarPolygonShape
   | ArrowShape
   | LineShape
   | ImageShape
@@ -142,6 +154,10 @@ export function isTextShape(s: Shape): s is TextShape {
 
 export function isPenShape(s: Shape): s is PenShape {
   return s.type === "pen"
+}
+
+export function isPolygonShape(s: Shape): s is PolygonShape {
+  return s.type === "polygon"
 }
 
 export function isArrowShape(s: Shape): s is ArrowShape {

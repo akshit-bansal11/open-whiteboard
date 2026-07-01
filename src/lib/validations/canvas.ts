@@ -76,8 +76,18 @@ export const TriangleShapeSchema = BaseShapeSchema.extend({
   type: z.literal("triangle"),
 })
 
+export const PolygonShapeSchema = BaseShapeSchema.extend({
+  type: z.literal("polygon"),
+  sides: z.number().int().min(3).max(20),
+})
+
 export const StarShapeSchema = BaseShapeSchema.extend({
   type: z.literal("star"),
+  points: z.number().int().min(3).max(20),
+})
+
+export const StarPolygonShapeSchema = BaseShapeSchema.extend({
+  type: z.literal("star-polygon"),
   points: z.number().int().min(3).max(20),
 })
 
@@ -88,6 +98,7 @@ export const ArrowShapeSchema = BaseShapeSchema.extend({
   endX: z.number().finite(),
   endY: z.number().finite(),
   arrowHead: z.enum(["none", "start", "end", "both"]),
+  headStyle: z.enum(["classic", "triangle", "stealth", "diamond"]),
 })
 
 export const LineShapeSchema = BaseShapeSchema.extend({
@@ -116,7 +127,9 @@ export const ShapeSchema = z.discriminatedUnion("type", [
   PenShapeSchema,
   DiamondShapeSchema,
   TriangleShapeSchema,
+  PolygonShapeSchema,
   StarShapeSchema,
+  StarPolygonShapeSchema,
   ArrowShapeSchema,
   LineShapeSchema,
   ImageShapeSchema,
@@ -133,7 +146,9 @@ export type TextShapeValidated = z.infer<typeof TextShapeSchema>
 export type PenShapeValidated = z.infer<typeof PenShapeSchema>
 export type DiamondShapeValidated = z.infer<typeof DiamondShapeSchema>
 export type TriangleShapeValidated = z.infer<typeof TriangleShapeSchema>
+export type PolygonShapeValidated = z.infer<typeof PolygonShapeSchema>
 export type StarShapeValidated = z.infer<typeof StarShapeSchema>
+export type StarPolygonShapeValidated = z.infer<typeof StarPolygonShapeSchema>
 export type ArrowShapeValidated = z.infer<typeof ArrowShapeSchema>
 export type LineShapeValidated = z.infer<typeof LineShapeSchema>
 export type ImageShapeValidated = z.infer<typeof ImageShapeSchema>
@@ -157,7 +172,9 @@ export const ShapeUpdateSchema = z.union([
   PenShapeSchema.partial().required({ id: true }),
   DiamondShapeSchema.partial().required({ id: true }),
   TriangleShapeSchema.partial().required({ id: true }),
+  PolygonShapeSchema.partial().required({ id: true }),
   StarShapeSchema.partial().required({ id: true }),
+  StarPolygonShapeSchema.partial().required({ id: true }),
   ArrowShapeSchema.partial().required({ id: true }),
   LineShapeSchema.partial().required({ id: true }),
   ImageShapeSchema.partial().required({ id: true }),

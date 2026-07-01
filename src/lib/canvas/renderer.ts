@@ -6,7 +6,9 @@ import type {
   DiamondShape,
   ImageShape,
   LineShape,
+  PolygonShape,
   Shape,
+  StarPolygonShape,
   StarShape,
   TriangleShape,
 } from "@/types/canvas"
@@ -148,8 +150,14 @@ export function renderFrame({
       case "triangle":
         renderTriangle(ctx, shape)
         break
+      case "polygon":
+        renderPolygon(ctx, shape)
+        break
       case "star":
         renderStar(ctx, shape)
+        break
+      case "star-polygon":
+        renderStarPolygon(ctx, shape)
         break
       case "arrow":
         renderArrow(ctx, shape)
@@ -301,6 +309,54 @@ function renderStar(ctx: CanvasRenderingContext2D, shape: StarShape) {
   applyFillStroke(ctx, shape)
 }
 
+function renderPolygon(ctx: CanvasRenderingContext2D, shape: PolygonShape) {
+  const cx = shape.x + shape.width / 2
+  const cy = shape.y + shape.height / 2
+  const r = Math.min(shape.width, shape.height) / 2
+  const n = shape.sides
+
+  ctx.beginPath()
+  for (let i = 0; i < n; i++) {
+    // start pointing up
+    const angle = (i * 2 * Math.PI) / n - Math.PI / 2
+    const x = cx + r * Math.cos(angle)
+    const y = cy + r * Math.sin(angle)
+    if (i === 0) ctx.moveTo(x, y)
+    else ctx.lineTo(x, y)
+  }
+  ctx.closePath()
+  applyFillStroke(ctx, shape)
+}
+
+function renderStarPolygon(
+  ctx: CanvasRenderingContext2D,
+  shape: StarPolygonShape
+) {
+  const cx = shape.x + shape.width / 2
+  const cy = shape.y + shape.height / 2
+  const r = Math.min(shape.width, shape.height) / 2
+  const n = shape.points
+
+  const step = n >= 5 ? Math.floor((n - 1) / 2) : 1
+  const gcd = (a: number, b: number): number => (b === 0 ? a : gcd(b, a % b))
+  const numPaths = gcd(n, step)
+
+  ctx.beginPath()
+  for (let p = 0; p < numPaths; p++) {
+    const pointsInPath = n / numPaths
+    for (let i = 0; i <= pointsInPath; i++) {
+      const v = (p + i * step) % n
+      const angle = (v * 2 * Math.PI) / n - Math.PI / 2
+      const x = cx + r * Math.cos(angle)
+      const y = cy + r * Math.sin(angle)
+      if (i === 0) ctx.moveTo(x, y)
+      else ctx.lineTo(x, y)
+    }
+  }
+  ctx.closePath()
+  applyFillStroke(ctx, shape)
+}
+
 function renderArrow(ctx: CanvasRenderingContext2D, shape: ArrowShape) {
   const { startX, startY, endX, endY } = shape
   applyStrokeDash(ctx, shape)
@@ -332,20 +388,68 @@ function drawArrowHead(
   shape: ArrowShape
 ) {
   ctx.beginPath()
-  ctx.moveTo(x, y)
-  ctx.lineTo(
-    x - len * Math.cos(angle - Math.PI / 6),
-    y - len * Math.sin(angle - Math.PI / 6)
-  )
-  ctx.moveTo(x, y)
-  ctx.lineTo(
-    x - len * Math.cos(angle + Math.PI / 6),
-    y - len * Math.sin(angle + Math.PI / 6)
-  )
-  ctx.strokeStyle = shape.stroke
-  ctx.lineWidth = shape.strokeWidth
-  ctx.globalAlpha = getStrokeOpacity(shape)
-  ctx.stroke()
+  const style = shape.headStyle || "classic"
+
+  if (style === "classic") {
+    ctx.moveTo(x, y)
+    ctx.lineTo(
+      x - len * Math.cos(angle - Math.PI / 6),
+      y - len * Math.sin(angle - Math.PI / 6)
+    )
+    ctx.moveTo(x, y)
+    ctx.lineTo(
+      x - len * Math.cos(angle + Math.PI / 6),
+      y - len * Math.sin(angle + Math.PI / 6)
+    )
+    ctx.strokeStyle = shape.stroke
+    ctx.lineWidth = shape.strokeWidth
+    ctx.globalAlpha = getStrokeOpacity(shape)
+    ctx.stroke()
+  } else if (style === "triangle") {
+    ctx.moveTo(x, y)
+    ctx.lineTo(
+      x - len * Math.cos(angle - Math.PI / 6),
+      y - len * Math.sin(angle - Math.PI / 6)
+    )
+    ctx.lineTo(
+      x - len * Math.cos(angle + Math.PI / 6),
+      y - len * Math.sin(angle + Math.PI / 6)
+    )
+    ctx.closePath()
+    ctx.fillStyle = shape.stroke
+    ctx.globalAlpha = getStrokeOpacity(shape)
+    ctx.fill()
+  } else if (style === "stealth") {
+    ctx.moveTo(x, y)
+    ctx.lineTo(
+      x - len * Math.cos(angle - Math.PI / 6),
+      y - len * Math.sin(angle - Math.PI / 6)
+    )
+    ctx.lineTo(x - len * 0.6 * Math.cos(angle), y - len * 0.6 * Math.sin(angle))
+    ctx.lineTo(
+      x - len * Math.cos(angle + Math.PI / 6),
+      y - len * Math.sin(angle + Math.PI / 6)
+    )
+    ctx.closePath()
+    ctx.fillStyle = shape.stroke
+    ctx.globalAlpha = getStrokeOpacity(shape)
+    ctx.fill()
+  } else if (style === "diamond") {
+    ctx.moveTo(x, y)
+    ctx.lineTo(
+      x - len * 0.7 * Math.cos(angle - Math.PI / 8),
+      y - len * 0.7 * Math.sin(angle - Math.PI / 8)
+    )
+    ctx.lineTo(x - len * 1.4 * Math.cos(angle), y - len * 1.4 * Math.sin(angle))
+    ctx.lineTo(
+      x - len * 0.7 * Math.cos(angle + Math.PI / 8),
+      y - len * 0.7 * Math.sin(angle + Math.PI / 8)
+    )
+    ctx.closePath()
+    ctx.fillStyle = shape.stroke
+    ctx.globalAlpha = getStrokeOpacity(shape)
+    ctx.fill()
+  }
 }
 
 function renderLine(ctx: CanvasRenderingContext2D, shape: LineShape) {
