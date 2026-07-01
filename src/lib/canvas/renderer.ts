@@ -14,6 +14,7 @@ import type {
 } from "@/types/canvas"
 import type { AwarenessState } from "@/types/user"
 import { getShapeBoundingBox } from "./math"
+import { wrapText as import_wrapText } from "./text"
 
 type RenderParams = {
   ctx: CanvasRenderingContext2D
@@ -97,8 +98,10 @@ export function renderFrame({
       case "ellipse":
         renderEllipse(ctx, shape)
         break
-      case "text":
-        ctx.font = `${shape.fontSize}px ${shape.fontFamily}`
+      case "text": {
+        const weight = shape.fontWeight || "normal"
+        const style = shape.fontStyle || "normal"
+        ctx.font = `${style} ${weight} ${shape.fontSize}px ${shape.fontFamily}`
         ctx.fillStyle = shape.fill
         ctx.textAlign = shape.textAlign
         ctx.textBaseline = "top"
@@ -109,10 +112,36 @@ export function renderFrame({
               : shape.textAlign === "right"
                 ? shape.x + shape.width
                 : shape.x
-          ctx.globalAlpha = getShapeOpacity(shape)
-          ctx.fillText(shape.content, tx, shape.y, shape.width)
+
+          const isPlaceholder = shape.content === ""
+          const displayContent = isPlaceholder
+            ? "Type something..."
+            : shape.content
+          if (isPlaceholder) {
+            ctx.globalAlpha = 0.5 * getShapeOpacity(shape)
+            ctx.save()
+            ctx.strokeStyle = "rgba(156, 163, 175, 0.5)" // zinc-400 with opacity
+            ctx.setLineDash([4 / zoom, 4 / zoom])
+            ctx.lineWidth = 1 / zoom
+            ctx.strokeRect(shape.x, shape.y, shape.width, shape.height)
+            ctx.restore()
+          } else {
+            ctx.globalAlpha = getShapeOpacity(shape)
+          }
+
+          const lines =
+            shape.width > 20
+              ? import_wrapText(ctx, displayContent, Math.max(shape.width, 50))
+              : displayContent.split("\n")
+
+          const lineHeight = shape.fontSize * 1.2
+          lines.forEach((line, i) => {
+            // Remove shape.width from fillText so text does not squash
+            ctx.fillText(line, tx, shape.y + i * lineHeight)
+          })
         }
         break
+      }
       case "pen":
         if (shape.points.length >= 2) {
           ctx.strokeStyle = shape.stroke

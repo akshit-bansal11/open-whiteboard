@@ -60,6 +60,24 @@ export const TextShapeSchema = BaseShapeSchema.extend({
   fontSize: z.number().positive().finite(),
   fontFamily: z.string().min(1),
   textAlign: z.enum(["left", "center", "right"]),
+  fontWeight: z
+    .enum([
+      "normal",
+      "bold",
+      "lighter",
+      "bolder",
+      "100",
+      "200",
+      "300",
+      "400",
+      "500",
+      "600",
+      "700",
+      "800",
+      "900",
+    ])
+    .default("normal"),
+  fontStyle: z.enum(["normal", "italic", "oblique"]).default("normal"),
 })
 
 export const PenShapeSchema = BaseShapeSchema.extend({

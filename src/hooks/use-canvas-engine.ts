@@ -81,6 +81,7 @@ export function useCanvasEngine({
     starPolygonPoints,
     arrowHead,
     arrowHeadStyle,
+    sizeLinked,
   } = useUIStore()
   const [interaction, setInteraction] = useState<InteractionState>({
     mode: "idle",
@@ -148,7 +149,17 @@ export function useCanvasEngine({
           if (first) {
             const bbox = getShapeBoundingBox(first)
             const rotation = first.rotation || 0
-            const handle = getResizeHandle(screenPt, bbox, camera, rotation)
+            let handle = getResizeHandle(screenPt, bbox, camera, rotation)
+
+            // Ignore edge handles if sizeLinked is true
+            if (
+              sizeLinked &&
+              handle &&
+              !["rotate", "nw", "ne", "sw", "se"].includes(handle)
+            ) {
+              handle = null
+            }
+
             if (handle) {
               if (handle === "rotate") {
                 setInteractionState({
@@ -289,10 +300,12 @@ export function useCanvasEngine({
                           ? {
                               ...base,
                               type: "text",
-                              content: "Text",
+                              content: "",
                               fontSize: 16,
                               fontFamily: "sans-serif",
                               textAlign: "left",
+                              fontWeight: "normal",
+                              fontStyle: "normal",
                             }
                           : { ...base, type: "pen", points: [worldPt] }
 
@@ -324,6 +337,7 @@ export function useCanvasEngine({
       starPolygonPoints,
       arrowHead,
       arrowHeadStyle,
+      sizeLinked,
     ]
   )
 
@@ -346,7 +360,16 @@ export function useCanvasEngine({
           if (selShapes.length === 1 && selShapes[0]) {
             const bbox = getShapeBoundingBox(selShapes[0])
             const rotation = selShapes[0].rotation || 0
-            const handle = getResizeHandle(screenPt, bbox, camera, rotation)
+            let handle = getResizeHandle(screenPt, bbox, camera, rotation)
+
+            if (
+              sizeLinked &&
+              handle &&
+              !["rotate", "nw", "ne", "sw", "se"].includes(handle)
+            ) {
+              handle = null
+            }
+
             if (handle) {
               cursor = handle === "rotate" ? "alias" : `${handle}-resize`
               hitHandle = true
@@ -510,7 +533,12 @@ export function useCanvasEngine({
             x: worldPt.x - state.startPointer.x,
             y: worldPt.y - state.startPointer.y,
           }
-          const dims = applyResize(state.startShape, state.handle, delta, false)
+          const dims = applyResize(
+            state.startShape,
+            state.handle,
+            delta,
+            sizeLinked
+          )
           setShape({ ...targetShape, ...dims, updatedAt: Date.now() } as Shape)
         }
       }
@@ -528,6 +556,7 @@ export function useCanvasEngine({
       deleteShapes,
       shapes,
       setInteractionState,
+      sizeLinked,
     ]
   )
 
@@ -541,12 +570,25 @@ export function useCanvasEngine({
         // Discard shapes that are too small (accidental clicks)
         if (
           shape.type !== "pen" &&
+          shape.type !== "text" &&
           shape.width < MIN_SHAPE_SIZE &&
           shape.height < MIN_SHAPE_SIZE
         ) {
           deleteShapes([shape.id])
         } else {
           setSelection([shape.id])
+          if (shape.type === "text") {
+            if (shape.width < MIN_SHAPE_SIZE) {
+              // Click-to-type: give a default width for wrapping
+              setShape({
+                ...shape,
+                width: 250,
+                height: shape.fontSize * 1.5,
+              } as Shape)
+            }
+            setInteractionState({ mode: "editing-text", shapeId: shape.id })
+            return
+          }
         }
       } else if (state.mode === "drawing-line") {
         // Always keep arrow/line — even zero-length ones are finalized on click
@@ -584,6 +626,7 @@ export function useCanvasEngine({
       setSelection,
       setLocalSelection,
       setInteractionState,
+      setShape,
     ]
   )
 
@@ -615,14 +658,46 @@ export function useCanvasEngine({
       const rect = canvas.getBoundingClientRect()
       const screenPt = { x: e.clientX - rect.left, y: e.clientY - rect.top }
       const worldPt = screenToWorld(screenPt, camera)
-      const hit = [...shapes]
-        .reverse()
-        .find((s) => s.type === "text" && hitTestShape(worldPt, s))
+      const hit = [...shapes].reverse().find((s) => hitTestShape(worldPt, s))
       if (hit) {
-        setInteractionState({ mode: "editing-text", shapeId: hit.id })
+        if (hit.type === "text") {
+          setInteractionState({ mode: "editing-text", shapeId: hit.id })
+        } else {
+          const bbox = getShapeBoundingBox(hit)
+          const fontSize = 16
+          const newTextShape: Shape = {
+            ...BASE_V12,
+            id: crypto.randomUUID() as ShapeId,
+            type: "text",
+            x: bbox.x,
+            y: bbox.y + bbox.height / 2 - fontSize / 2,
+            width: bbox.width,
+            height: fontSize * 1.5,
+            rotation: hit.rotation,
+            fill: "#ffffff",
+            stroke: "transparent",
+            strokeWidth: 0,
+            opacity: 1,
+            locked: false,
+            createdBy: currentUserId,
+            updatedAt: Date.now(),
+            content: "",
+            fontSize,
+            fontFamily: "Inter, sans-serif",
+            textAlign: "center",
+            fontWeight: "normal",
+            fontStyle: "normal",
+          }
+          setShape(newTextShape)
+          setSelection([newTextShape.id])
+          setInteractionState({
+            mode: "editing-text",
+            shapeId: newTextShape.id,
+          })
+        }
       }
     },
-    [camera, shapes, setInteractionState]
+    [camera, shapes, setInteractionState, currentUserId, setShape, setSelection]
   )
 
   return {

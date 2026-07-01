@@ -88,6 +88,21 @@ export type TextShape = BaseShape & {
   fontSize: number
   fontFamily: string
   textAlign: "left" | "center" | "right"
+  fontWeight:
+    | "normal"
+    | "bold"
+    | "lighter"
+    | "bolder"
+    | "100"
+    | "200"
+    | "300"
+    | "400"
+    | "500"
+    | "600"
+    | "700"
+    | "800"
+    | "900"
+  fontStyle: "normal" | "italic" | "oblique"
 }
 
 export type PenShape = BaseShape & {
