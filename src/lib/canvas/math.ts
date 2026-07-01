@@ -500,3 +500,43 @@ export function applyRotation(
   const rotation = ((raw % TWO_PI) + TWO_PI) % TWO_PI
   return { rotation }
 }
+
+/**
+ * Flips a shape along the given axis.
+ * For paths and lines, this physically modifies the coordinates.
+ * For other shapes, it toggles the flipX/flipY properties.
+ */
+export function flipShape(shape: Shape, axis: "x" | "y"): Shape {
+  const bbox = getShapeBoundingBox(shape)
+  const cx = bbox.x + bbox.width / 2
+  const cy = bbox.y + bbox.height / 2
+
+  if (shape.type === "pen") {
+    return {
+      ...shape,
+      points: shape.points.map((p) => ({
+        x: axis === "x" ? 2 * cx - p.x : p.x,
+        y: axis === "y" ? 2 * cy - p.y : p.y,
+      })),
+      updatedAt: Date.now(),
+    }
+  }
+
+  if (shape.type === "arrow" || shape.type === "line") {
+    return {
+      ...shape,
+      startX: axis === "x" ? 2 * cx - shape.startX : shape.startX,
+      endX: axis === "x" ? 2 * cx - shape.endX : shape.endX,
+      startY: axis === "y" ? 2 * cy - shape.startY : shape.startY,
+      endY: axis === "y" ? 2 * cy - shape.endY : shape.endY,
+      updatedAt: Date.now(),
+    }
+  }
+
+  return {
+    ...shape,
+    flipX: axis === "x" ? !shape.flipX : shape.flipX,
+    flipY: axis === "y" ? !shape.flipY : shape.flipY,
+    updatedAt: Date.now(),
+  }
+}

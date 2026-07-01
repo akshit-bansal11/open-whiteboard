@@ -2,7 +2,7 @@
 import { AnimatePresence, motion } from "framer-motion"
 import { FlipHorizontal, FlipVertical, Link, Unlink } from "lucide-react"
 import { useState } from "react"
-import { getShapeBoundingBox } from "@/lib/canvas/math"
+import { flipShape, getShapeBoundingBox } from "@/lib/canvas/math"
 import { useUIStore } from "@/stores/ui-store"
 import type { ArrowShape, BoundingBox, Shape, TextShape } from "@/types/canvas"
 import { ColorSwatch } from "./ColorSwatch"
@@ -93,14 +93,7 @@ export function StylePanel({ shapes, batchSetShapes }: StylePanelProps) {
   }
 
   const toggleFlip = (axis: "x" | "y") => {
-    const updated = activeShapes.map((shape) => {
-      return {
-        ...shape,
-        flipX: axis === "x" ? !shape.flipX : shape.flipX,
-        flipY: axis === "y" ? !shape.flipY : shape.flipY,
-        updatedAt: Date.now(),
-      }
-    })
+    const updated = activeShapes.map((shape) => flipShape(shape, axis))
     batchSetShapes(updated as Shape[])
   }
 
