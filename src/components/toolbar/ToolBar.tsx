@@ -1,6 +1,5 @@
 "use client"
 import {
-  ChevronRight,
   Circle,
   Eraser,
   Hand,
@@ -134,7 +133,7 @@ export function ToolBar({
                 max={20}
                 value={polygonSides}
                 onChange={(e) => {
-                  const val = Number.parseInt(e.target.value) || 3
+                  const val = Number.parseInt(e.target.value, 10) || 3
                   setPolygonSides(val)
                   setTool(val === 4 ? "rect" : "polygon")
                 }}
@@ -197,7 +196,7 @@ export function ToolBar({
                 max={20}
                 value={starPoints}
                 onChange={(e) => {
-                  const val = Number.parseInt(e.target.value) || 3
+                  const val = Number.parseInt(e.target.value, 10) || 3
                   setStarPoints(val)
                   setTool("star")
                 }}
@@ -250,7 +249,7 @@ export function ToolBar({
                 max={20}
                 value={starPolygonPoints}
                 onChange={(e) => {
-                  const val = Number.parseInt(e.target.value) || 5
+                  const val = Number.parseInt(e.target.value, 10) || 5
                   setStarPolygonPoints(val)
                   setTool("star-polygon")
                 }}
