@@ -1,5 +1,7 @@
 "use client"
-import { useCallback, useEffect, useState } from "react"
+import { ArrowLeft, Info, X } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { ExportPanel } from "@/components/panels/ExportPanel"
 import { StylePanel } from "@/components/panels/StylePanel"
 import { CursorOverlay } from "@/components/presence/CursorOverlay"
@@ -9,14 +11,19 @@ import { useAwareness } from "@/hooks/use-awareness"
 import { useCanvasEngine } from "@/hooks/use-canvas-engine"
 import { useCanvasRenderer } from "@/hooks/use-canvas-renderer"
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
-import { useYjsSync } from "@/hooks/use-yjs-sync"
+import { clearRoomData, useYjsSync } from "@/hooks/use-yjs-sync"
 import { screenToWorld } from "@/lib/canvas/math"
-import { recordRoomVisit } from "@/lib/storage/local-rooms"
+import { measureTextShape } from "@/lib/canvas/text"
+import {
+  getRecentRooms,
+  recordRoomVisit,
+  removeRecentRoom,
+} from "@/lib/storage/local-rooms"
 import { getOrCreateLocalUser } from "@/lib/user"
 import { useUIStore } from "@/stores/ui-store"
 import type { ImageShape, ShapeId, TextShape } from "@/types/canvas"
-import { ConnectionStatus } from "./ConnectionStatus"
 import { RoomHeader } from "./RoomHeader"
+import { SaveBoardModal } from "./SaveBoardModal"
 import { SelectionHUD } from "./SelectionHUD"
 import { TextEditOverlay } from "./TextEditOverlay"
 import { ZoomControls } from "./ZoomControls"
@@ -24,21 +31,65 @@ import { ZoomControls } from "./ZoomControls"
 type CanvasAppProps = { roomId: string }
 
 export function CanvasApp({ roomId }: CanvasAppProps) {
+  const router = useRouter()
   const localUser = getOrCreateLocalUser()
   const { camera, selectedIds } = useUIStore()
 
+  const [isSaveModalOpen, setIsSaveModalOpen] = useState(false)
+  const [hasSavedRoom, setHasSavedRoom] = useState(false)
+  const [showInfographic, setShowInfographic] = useState(true)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [isTemporarilySaved, setIsTemporarilySaved] = useState(false)
+
+  const lastSavedShapesRef = useRef<string | null>(null)
+
   useEffect(() => {
-    recordRoomVisit(roomId)
+    if (!hasSavedRoom && showInfographic) {
+      const timer = setTimeout(() => setShowInfographic(false), 5000)
+      return () => clearTimeout(timer)
+    }
+  }, [hasSavedRoom, showInfographic])
+
+  // Check if it was already saved
+  useEffect(() => {
+    const saved = getRecentRooms().some((r) => r.id === roomId)
+    setHasSavedRoom(saved)
   }, [roomId])
 
-  const {
-    shapes,
-    undoManager,
-    setShape,
-    batchSetShapes,
-    deleteShapes,
-    connectionStatus,
-  } = useYjsSync(roomId)
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!hasSavedRoom || hasUnsavedChanges) {
+        e.preventDefault()
+        e.returnValue = "" // Trigger native browser prompt
+      }
+    }
+    window.addEventListener("beforeunload", handleBeforeUnload)
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload)
+  }, [hasSavedRoom, hasUnsavedChanges])
+
+  const { shapes, undoManager, setShape, batchSetShapes, deleteShapes } =
+    useYjsSync(roomId, hasSavedRoom)
+
+  useEffect(() => {
+    const currentShapesStr = JSON.stringify(shapes)
+    if (lastSavedShapesRef.current === null) {
+      lastSavedShapesRef.current = currentShapesStr
+      return
+    }
+    if (currentShapesStr !== lastSavedShapesRef.current) {
+      setHasUnsavedChanges(true)
+    } else {
+      setHasUnsavedChanges(false)
+    }
+  }, [shapes])
+
+  const handleSaveBoard = useCallback(() => {
+    if (!hasUnsavedChanges && (hasSavedRoom || isTemporarilySaved)) return
+    setIsTemporarilySaved(true)
+    setShowInfographic(false)
+    setHasUnsavedChanges(false)
+    lastSavedShapesRef.current = JSON.stringify(shapes)
+  }, [hasUnsavedChanges, hasSavedRoom, isTemporarilySaved, shapes])
 
   const { remoteStates, setLocalCursor, setLocalSelection } = useAwareness(
     roomId,
@@ -141,7 +192,9 @@ export function CanvasApp({ roomId }: CanvasAppProps) {
   const commitText = useCallback(
     (content: string) => {
       if (!editingShape) return
-      setShape({ ...editingShape, content, updatedAt: Date.now() })
+      const tempShape = { ...editingShape, content }
+      const dims = measureTextShape(tempShape)
+      setShape({ ...tempShape, ...dims, updatedAt: Date.now() })
       setEditingTextId(null)
     },
     [editingShape, setShape]
@@ -193,14 +246,53 @@ export function CanvasApp({ roomId }: CanvasAppProps) {
             : { x: window.innerWidth / 2, y: window.innerHeight / 2 }
           handleImageFile(file, screenPt)
         }}
+        onSave={handleSaveBoard}
       />
       <StylePanel shapes={shapes} batchSetShapes={batchSetShapes} />
       <ExportPanel shapes={shapes} />
       <ZoomControls shapes={shapes} />
       <RoomHeader roomId={roomId} />
-      <div className="absolute top-4 right-4 flex items-center gap-3 z-10">
-        <ConnectionStatus status={connectionStatus} />
-        <UserList participants={remoteStates} localUserId={localUser.userId} />
+
+      {/* Back to Home Button */}
+      <button
+        type="button"
+        className="absolute top-4 left-4 flex items-center justify-center w-10 h-10 rounded-2xl bg-zinc-950/80 backdrop-blur-xl border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors shadow-2xl z-20"
+        onClick={() => {
+          if (!hasSavedRoom || hasUnsavedChanges) {
+            setIsSaveModalOpen(true)
+          } else {
+            router.push("/")
+          }
+        }}
+        aria-label="Back to home"
+      >
+        <ArrowLeft className="w-5 h-5" />
+      </button>
+
+      <div className="absolute top-4 right-4 flex flex-col items-end gap-3 z-10 pointer-events-none">
+        <div className="flex items-center gap-3 pointer-events-auto">
+          <UserList
+            participants={remoteStates}
+            localUserId={localUser.userId}
+          />
+        </div>
+        {!hasSavedRoom && !isTemporarilySaved && showInfographic && (
+          <div className="bg-blue-900/80 border border-blue-500/50 text-blue-100 text-sm p-3 rounded-xl shadow-lg backdrop-blur-xl max-w-sm pointer-events-auto flex items-start gap-3 animate-in fade-in slide-in-from-top-4 relative pr-10">
+            <Info className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+            <p>
+              Your data is not saved. If you'd like to keep this data locally
+              for future reference, please click on the save button.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowInfographic(false)}
+              className="absolute top-2 right-2 p-1 text-blue-400 hover:text-blue-200 hover:bg-blue-800/50 rounded-lg transition-colors"
+              aria-label="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </div>
       {editingShape && (
         <TextEditOverlay
@@ -210,6 +302,20 @@ export function CanvasApp({ roomId }: CanvasAppProps) {
           onCancel={() => setEditingTextId(null)}
         />
       )}
+      <SaveBoardModal
+        isOpen={isSaveModalOpen}
+        onClose={() => setIsSaveModalOpen(false)}
+        onSaveAndLeave={() => {
+          recordRoomVisit(roomId)
+          setHasSavedRoom(true)
+          router.push("/")
+        }}
+        onLeaveWithoutSaving={() => {
+          removeRecentRoom(roomId)
+          clearRoomData(roomId)
+          router.push("/")
+        }}
+      />
     </div>
   )
 }

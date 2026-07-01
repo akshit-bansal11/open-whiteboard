@@ -9,6 +9,7 @@ import {
   MousePointer,
   MoveUpRight,
   Pen,
+  Save,
   Sparkles,
   Square,
   Star,
@@ -21,8 +22,10 @@ import type { Tool } from "@/types/canvas"
 
 export function ToolBar({
   onImagePick,
+  onSave,
 }: {
   onImagePick?: (file: File) => void
+  onSave?: () => void
 }) {
   const {
     activeTool,
@@ -377,6 +380,19 @@ export function ToolBar({
         label="Pan"
         shortcut="H"
       />
+
+      {onSave && (
+        <>
+          <div className="my-1 h-px w-full bg-zinc-800" />
+          <ToolButton
+            tool="save"
+            active={false}
+            onClick={onSave}
+            Icon={Save}
+            label="Save Board"
+          />
+        </>
+      )}
     </div>
   )
 }
