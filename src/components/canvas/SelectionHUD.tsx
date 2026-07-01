@@ -34,10 +34,20 @@ export function SelectionHUD({ shapes }: SelectionHUDProps) {
   const bbox = getSelectionBoundingBox(selected)
   if (!bbox) return null
 
+  const rotation = selected.length === 1 ? selected[0].rotation : 0
+  const cx = bbox.x + bbox.width / 2
+  const cy = bbox.y + bbox.height / 2
+  const screenCx = cx * camera.zoom + camera.x
+  const screenCy = cy * camera.zoom + camera.y
+
   return (
     <div
       className="absolute inset-0 pointer-events-none"
-      style={{ zIndex: 20 }}
+      style={{
+        zIndex: 20,
+        transform: `rotate(${rotation}rad)`,
+        transformOrigin: `${screenCx}px ${screenCy}px`,
+      }}
     >
       <div
         className="absolute border border-blue-500/50"

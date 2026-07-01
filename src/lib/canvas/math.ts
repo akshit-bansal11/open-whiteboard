@@ -337,9 +337,18 @@ function getHandleScreenPos(
 export function getResizeHandle(
   point: Point,
   bbox: BoundingBox,
-  camera: Camera
+  camera: Camera,
+  rotation: number = 0
 ): ResizeHandle | "rotate" | null {
   const hitRadius = HANDLE_SIZE / 2
+
+  let testPoint = point
+  if (rotation !== 0) {
+    const cx = bbox.x + bbox.width / 2
+    const cy = bbox.y + bbox.height / 2
+    const screenCenter = worldToScreen({ x: cx, y: cy }, camera)
+    testPoint = rotatePoint(point, screenCenter, -rotation)
+  }
 
   // Check rotate handle first (positioned 30 world units above the 'n' handle)
   const nHandleWorld = { x: bbox.x + bbox.width / 2, y: bbox.y }
@@ -349,16 +358,16 @@ export function getResizeHandle(
   }
   const rotateScreen = worldToScreen(rotateWorld, camera)
   if (
-    Math.abs(point.x - rotateScreen.x) <= hitRadius &&
-    Math.abs(point.y - rotateScreen.y) <= hitRadius
+    Math.abs(testPoint.x - rotateScreen.x) <= hitRadius &&
+    Math.abs(testPoint.y - rotateScreen.y) <= hitRadius
   ) {
     return "rotate"
   }
 
   for (const handle of Object.keys(HANDLE_POSITIONS) as ResizeHandle[]) {
     const screenPos = getHandleScreenPos(handle, bbox, camera)
-    const dx = point.x - screenPos.x
-    const dy = point.y - screenPos.y
+    const dx = testPoint.x - screenPos.x
+    const dy = testPoint.y - screenPos.y
     if (Math.abs(dx) <= hitRadius && Math.abs(dy) <= hitRadius) {
       return handle
     }
@@ -383,13 +392,42 @@ export function getResizeHandle(
  * @param aspectLock - Whether to lock the aspect ratio.
  * @returns A partial shape containing only the mutated geometry fields.
  */
+
 export function applyResize(
   shape: Shape,
   handle: ResizeHandle,
   delta: Point,
   aspectLock: boolean
 ): Partial<Shape> {
+  const rotation = shape.rotation || 0
   const bbox = getShapeBoundingBox(shape)
+  const oldCx = bbox.x + bbox.width / 2
+  const oldCy = bbox.y + bbox.height / 2
+
+  const localDelta = {
+    x: delta.x * Math.cos(-rotation) - delta.y * Math.sin(-rotation),
+    y: delta.x * Math.sin(-rotation) + delta.y * Math.cos(-rotation),
+  }
+
+  const anchorX =
+    handle === "nw" || handle === "w" || handle === "sw"
+      ? bbox.x + bbox.width
+      : handle === "ne" || handle === "e" || handle === "se"
+        ? bbox.x
+        : bbox.x + bbox.width / 2
+  const anchorY =
+    handle === "nw" || handle === "n" || handle === "ne"
+      ? bbox.y + bbox.height
+      : handle === "sw" || handle === "s" || handle === "se"
+        ? bbox.y
+        : bbox.y + bbox.height / 2
+
+  const worldAnchor = rotatePoint(
+    { x: anchorX, y: anchorY },
+    { x: oldCx, y: oldCy },
+    rotation
+  )
+
   let { x, y, width, height } = bbox
   const oldX = x,
     oldY = y,
@@ -397,37 +435,33 @@ export function applyResize(
     oldH = height
   const aspect = width !== 0 ? width / height : 1
 
-  // Apply the delta to the relevant edges based on which handle is active
   if (handle === "nw" || handle === "n" || handle === "ne") {
-    y += delta.y
-    height -= delta.y
+    y += localDelta.y
+    height -= localDelta.y
   }
   if (handle === "se" || handle === "s" || handle === "sw") {
-    height += delta.y
+    height += localDelta.y
   }
   if (handle === "nw" || handle === "w" || handle === "sw") {
-    x += delta.x
-    width -= delta.x
+    x += localDelta.x
+    width -= localDelta.x
   }
   if (handle === "ne" || handle === "e" || handle === "se") {
-    width += delta.x
+    width += localDelta.x
   }
 
-  // Aspect lock — adjust the secondary axis to maintain the original ratio
   if (aspectLock && aspect !== 0) {
     const isCorner =
       handle === "nw" || handle === "ne" || handle === "se" || handle === "sw"
     if (isCorner) {
-      // Drive height from width
       const newHeight = width / aspect
       if (handle === "nw" || handle === "ne") {
-        y += height - newHeight // keep bottom edge fixed
+        y += height - newHeight
       }
       height = newHeight
     }
   }
 
-  // Clamp to minimum size, flipping anchor when dimension goes negative
   if (width < MIN_SHAPE_SIZE) {
     if (handle === "nw" || handle === "w" || handle === "sw") {
       x = x + width - MIN_SHAPE_SIZE
@@ -440,6 +474,34 @@ export function applyResize(
     }
     height = MIN_SHAPE_SIZE
   }
+
+  const newAnchorX =
+    handle === "nw" || handle === "w" || handle === "sw"
+      ? x + width
+      : handle === "ne" || handle === "e" || handle === "se"
+        ? x
+        : x + width / 2
+  const newAnchorY =
+    handle === "nw" || handle === "n" || handle === "ne"
+      ? y + height
+      : handle === "sw" || handle === "s" || handle === "se"
+        ? y
+        : y + height / 2
+
+  const newCx = x + width / 2
+  const newCy = y + height / 2
+
+  const newWorldAnchor = rotatePoint(
+    { x: newAnchorX, y: newAnchorY },
+    { x: newCx, y: newCy },
+    rotation
+  )
+
+  const driftX = worldAnchor.x - newWorldAnchor.x
+  const driftY = worldAnchor.y - newWorldAnchor.y
+
+  x += driftX
+  y += driftY
 
   const scaleX = oldW === 0 ? 1 : width / oldW
   const scaleY = oldH === 0 ? 1 : height / oldH

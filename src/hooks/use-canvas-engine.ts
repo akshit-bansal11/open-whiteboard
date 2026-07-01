@@ -142,7 +142,8 @@ export function useCanvasEngine({
           const first = selShapes[0]
           if (first) {
             const bbox = getShapeBoundingBox(first)
-            const handle = getResizeHandle(screenPt, bbox, camera)
+            const rotation = first.rotation || 0
+            const handle = getResizeHandle(screenPt, bbox, camera, rotation)
             if (handle) {
               if (handle === "rotate") {
                 setInteractionState({
@@ -325,7 +326,8 @@ export function useCanvasEngine({
           let hitHandle = false
           if (selShapes.length === 1 && selShapes[0]) {
             const bbox = getShapeBoundingBox(selShapes[0])
-            const handle = getResizeHandle(screenPt, bbox, camera)
+            const rotation = selShapes[0].rotation || 0
+            const handle = getResizeHandle(screenPt, bbox, camera, rotation)
             if (handle) {
               cursor = handle === "rotate" ? "alias" : `${handle}-resize`
               hitHandle = true
