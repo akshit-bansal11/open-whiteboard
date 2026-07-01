@@ -27,7 +27,7 @@ function handlePosition(
 type SelectionHUDProps = { shapes: Shape[] }
 
 export function SelectionHUD({ shapes }: SelectionHUDProps) {
-  const { selectedIds, camera } = useUIStore()
+  const { selectedIds, camera, sizeLinked } = useUIStore()
   const selected = shapes.filter((s) => selectedIds.has(s.id))
   if (selected.length === 0) return null
 
@@ -39,6 +39,10 @@ export function SelectionHUD({ shapes }: SelectionHUDProps) {
   const cy = bbox.y + bbox.height / 2
   const screenCx = cx * camera.zoom + camera.x
   const screenCy = cy * camera.zoom + camera.y
+
+  const activeHandles = sizeLinked
+    ? (["nw", "ne", "sw", "se"] as ResizeHandle[])
+    : HANDLES
 
   return (
     <div
@@ -58,7 +62,7 @@ export function SelectionHUD({ shapes }: SelectionHUDProps) {
           height: bbox.height * camera.zoom,
         }}
       />
-      {HANDLES.map((handle) => {
+      {activeHandles.map((handle) => {
         const worldPos = handlePosition(handle, bbox)
         const screenPos = worldToScreen(worldPos, camera)
         return (

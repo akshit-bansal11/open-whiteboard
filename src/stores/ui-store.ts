@@ -8,6 +8,7 @@ type UIStore = {
   showGrid: boolean
   stylePanelOpen: boolean
   exportPanelOpen: boolean
+  sizeLinked: boolean
 
   polygonSides: number
   starPoints: number
@@ -25,6 +26,7 @@ type UIStore = {
   setCamera: (camera: Camera) => void
   setStylePanelOpen: (open: boolean) => void
   setExportPanelOpen: (open: boolean) => void
+  setSizeLinked: (linked: boolean) => void
 
   setPolygonSides: (sides: number) => void
   setStarPoints: (points: number) => void
@@ -42,6 +44,7 @@ export const useUIStore = create<UIStore>((set) => ({
   showGrid: true,
   stylePanelOpen: false,
   exportPanelOpen: false,
+  sizeLinked: false,
 
   polygonSides: 5,
   starPoints: 5,
@@ -65,6 +68,7 @@ export const useUIStore = create<UIStore>((set) => ({
   setCamera: (camera) => set({ camera }),
   setStylePanelOpen: (open) => set({ stylePanelOpen: open }),
   setExportPanelOpen: (open) => set({ exportPanelOpen: open }),
+  setSizeLinked: (linked) => set({ sizeLinked: linked }),
 
   setPolygonSides: (sides) => set({ polygonSides: sides }),
   setStarPoints: (points) => set({ starPoints: points }),
