@@ -169,7 +169,7 @@ export type InteractionState =
   | {
       mode: "moving"
       shapeIds: ShapeId[]
-      startPositions: Map<ShapeId, Point>
+      startShapes: Map<ShapeId, Shape>
       startPointer: Point
     }
   | {

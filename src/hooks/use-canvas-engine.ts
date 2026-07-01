@@ -184,15 +184,13 @@ export function useCanvasEngine({
           const activeIds = e.shiftKey
             ? ([...selectedIds, hit.id] as ShapeId[])
             : ([hit.id] as ShapeId[])
-          const startPositions = new Map<ShapeId, Point>(
-            shapes
-              .filter((s) => activeIds.includes(s.id))
-              .map((s) => [s.id, { x: s.x, y: s.y }])
+          const startShapes = new Map<ShapeId, Shape>(
+            shapes.filter((s) => activeIds.includes(s.id)).map((s) => [s.id, s])
           )
           setInteractionState({
             mode: "moving",
             shapeIds: activeIds,
-            startPositions,
+            startShapes,
             startPointer: worldPt,
           })
         } else {
@@ -428,13 +426,37 @@ export function useCanvasEngine({
         const moved = shapes
           .filter((s) => state.shapeIds.includes(s.id))
           .map((s) => {
-            const start = state.startPositions.get(s.id) ?? { x: s.x, y: s.y }
-            return {
+            const startShape = state.startShapes.get(s.id)
+            if (!startShape) return s
+
+            const baseMoved = {
               ...s,
-              x: start.x + dx,
-              y: start.y + dy,
+              x: startShape.x + dx,
+              y: startShape.y + dy,
               updatedAt: Date.now(),
             }
+
+            if (s.type === "pen" && startShape.type === "pen") {
+              return {
+                ...baseMoved,
+                points: startShape.points.map((p) => ({
+                  x: p.x + dx,
+                  y: p.y + dy,
+                })),
+              }
+            } else if (
+              (s.type === "line" || s.type === "arrow") &&
+              (startShape.type === "line" || startShape.type === "arrow")
+            ) {
+              return {
+                ...baseMoved,
+                startX: startShape.startX + dx,
+                startY: startShape.startY + dy,
+                endX: startShape.endX + dx,
+                endY: startShape.endY + dy,
+              }
+            }
+            return baseMoved
           })
         batchSetShapes(moved as Shape[])
       } else if (state.mode === "selecting") {
